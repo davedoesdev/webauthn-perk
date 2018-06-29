@@ -1,4 +1,6 @@
 const { promisify } = require('util');
+const path = require('path');
+const readFile = promisify(require('fs').readFile);
 const pub_keystore = promisify(require('pub-keystore'));
 const argv = require('yargs')
     .array('id')
@@ -20,7 +22,10 @@ const start = async () => {
         prefix: '/cred',
         cred: {
             valid_ids: argv.id,
-            keystore: ks
+            keystore: ks,
+            secure_session_options: {
+                key: await readFile(path.join(__dirname, 'secret-session-key'))
+            }
         }
     });
 
