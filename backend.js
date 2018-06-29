@@ -1,3 +1,4 @@
+/*eslint-env node */
 const { promisify } = require('util');
 const path = require('path');
 const readFile = promisify(require('fs').readFile);

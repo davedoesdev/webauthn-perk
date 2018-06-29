@@ -1,3 +1,4 @@
+/*eslint-env node */
 const { promisify } = require('util');
 const { Fido2Lib } = require('fido2-lib');
 const secure_session = require('fastify-secure-session');
