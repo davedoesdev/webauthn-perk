@@ -1,7 +1,6 @@
 /*eslint-env node */
 const { promisify } = require('util');
 const { Fido2Lib } = require('fido2-lib');
-const secure_session = require('fastify-secure-session');
 
 module.exports = async function (fastify, options) {
     fastify.log.info(`valid ids: ${options.cred.valid_ids}`);
@@ -24,7 +23,7 @@ module.exports = async function (fastify, options) {
         }
     }
 
-    fastify.register(secure_session, options.cred.secure_session_options);
+    fastify.register(require('fastify-secure-session'), options.cred.secure_session_options);
 
     for (const id of valid_ids) {
         fastify.log.info(`setting up routes for id: ${id}`);

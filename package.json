@@ -27,18 +27,19 @@
   "dependencies": {
     "axios": "^0.18.0",
     "fastify": "^1.7.0",
-    "fastify-secure-session": "^0.4.2",
+    "fastify-secure-session": "^0.4.3",
+    "fastify-static": "^0.12.0",
     "fido2-lib": "^2.1.1",
     "pub-keystore": "^3.1.2",
     "yargs": "^11.0.0"
   },
   "devDependencies": {
-    "@davedoesdev/wdio-static-server-service": "^1.2.1",
     "chai": "^4.1.2",
     "eslint": "^5.0.0",
     "grunt": "^1.0.3",
     "grunt-eslint": "^21.0.0",
     "grunt-exec": "^3.0.0",
+    "grunt-force-task": "^2.0.0",
     "grunt-mocha-test": "^0.13.3",
     "mocha": "^5.2.0",
     "nyc": "^12.0.2",
