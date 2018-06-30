@@ -2,7 +2,7 @@
 const { promisify } = require('util');
 const path = require('path');
 const readFile = promisify(require('fs').readFile);
-const pub_keystore = promisify(require('pub-keystore'));
+const authorize_jwt = promisify(require('authorize-jwt'));
 const argv = require('yargs')
     .array('id')
     .demandOption('id')
@@ -12,18 +12,18 @@ const fastify = require('fastify')({
 });
 
 const start = async () => {
-    // TODO: We might need to use authorize-jwt's keystore
-    const ks = await pub_keystore({
+    const authz = await authorize_jwt({
         db_type: 'pouchdb',
         db_for_update: true,
-        no_updates: true
+        no_updates: true,
+        WEBAUTHN_MODE: true,
     });
 
     fastify.register(require('./cred.js'), {
         prefix: '/cred',
         cred: {
             valid_ids: argv.id,
-            keystore: ks,
+            keystore: authz.keystore,
             secure_session_options: {
                 key: await readFile(path.join(__dirname, 'secret-session-key'))
             }
