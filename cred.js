@@ -1,6 +1,7 @@
 /*eslint-env node */
 const { promisify } = require('util');
 const { Fido2Lib } = require('fido2-lib');
+const default_user = 'Anonymous User';
 
 module.exports = async function (fastify, options) {
     options = options.cred_options || options;
@@ -34,7 +35,12 @@ module.exports = async function (fastify, options) {
             if (entry === null) {
                 reply.code(404);
                 const attestation_options = await fido2lib.attestationOptions(fido2_options.attestation_options);
-                attestation_options.challenge = Buffer.from(attestation_options.challenge).toString('base64');
+                attestation_options.challenge = Array.from(Buffer.from(attestation_options.challenge));
+                attestation_options.user = Object.assign({
+                    name: default_user,
+                    displayName: default_user,
+                    id: default_user
+                }, attestation_options.user, fido2_options.user);
                 request.session.set('challenge', attestation_options.challenge);
                 return attestation_options;
             }

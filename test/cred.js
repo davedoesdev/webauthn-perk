@@ -1,4 +1,4 @@
-/* eslint-env node, mocha, wdio */
+/* eslint-env node, mocha, browser */
 /* global browser, axios */
 
 const { promisify } = require('util');
@@ -80,11 +80,31 @@ describe('credentials', function () {
 
         await browser.url(`${origin}/test/cred.html`);
 
+        const url0 = `${origin}/cred/${valid_ids[0]}`;
+
         expect(await executeAsync(async url => {
             return (await axios(url, {
                 validateStatus: status => status === 404
             })).status;
-        }, `${origin}/cred/${valid_ids[0]}`)).to.equal(404);
+        }, url0)).to.equal(404);
+
+        const cred = await executeAsync(async url => {
+            const response = await axios(url, {
+                validateStatus: status => status === 404
+            });
+
+            const data = response.data;
+            data.challenge = Uint8Array.from(data.challenge);
+            data.user.id = new TextEncoder('utf-8').encode(data.user.id);
+
+            const cred = await navigator.credentials.create({
+                publicKey: response.data
+            });
+
+            return cred;
+        }, url0);
+
+        console.log("HELLO", cred);
 
         // then do the same but use the data to make a credential
 
