@@ -21,7 +21,7 @@ const fastify = require('fastify')({
     });
 
     try {
-        await fastify.listen(3000);
+        await fastify.listen(process.env.CONFERKIT_PORT);
     } catch (err) {
         fastify.log.error(err);
         process.exit(1);

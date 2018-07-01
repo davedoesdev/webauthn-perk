@@ -1,10 +1,13 @@
 /* eslint-env node, mocha, wdio */
-/* global browser */
+/* global browser, axios */
 
 const { promisify } = require('util');
 const path = require('path');
 const readFile = require('fs').promises.readFile;
+const { expect } = require('chai');
 const randomBytes = promisify(require('crypto').randomBytes);
+const port = 3000;
+const origin = `https://localhost:${port}`;
 const valid_ids = [];
 let fastify;
 
@@ -40,7 +43,7 @@ beforeEach(async function () {
         prefix: '/test'
     });
 
-    await fastify.listen(3000);
+    await fastify.listen(port);
 });
 
 afterEach(async function () {
@@ -59,6 +62,10 @@ async function executeAsync(f, ...args) {
         })();
     }, f.toString(), ...args)).value;
 
+    if (r.error) {
+        throw new Error(r.error);
+    }
+
     return r;
 }
 
@@ -71,8 +78,15 @@ describe('credentials', function () {
         // should get challenge etc
         // load from static
 
-        await browser.url('https://localhost:3000/test/cred.html');
+        await browser.url(`${origin}/test/cred.html`);
 
+        expect(await executeAsync(async url => {
+            return (await axios(url, {
+                validateStatus: status => status === 404
+            })).status;
+        }, `${origin}/cred/${valid_ids[0]}`)).to.equal(404);
+
+        // then do the same but use the data to make a credential
 
     });
 });
