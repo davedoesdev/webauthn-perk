@@ -3,13 +3,14 @@ const { promisify } = require('util');
 const { Fido2Lib } = require('fido2-lib');
 
 module.exports = async function (fastify, options) {
-    fastify.log.info(`valid ids: ${options.cred.valid_ids}`);
-    const valid_ids = new Set(options.cred.valid_ids);
+    options = options.cred_options || options;
+    fastify.log.info(`valid ids: ${options.valid_ids}`);
+    const valid_ids = new Set(options.valid_ids);
 
-    const fido2_options = options.cred.fido2_options || {};
-    const fido2lib = new Fido2Lib(fido2_options.newOptions);
+    const fido2_options = options.fido2_options || {};
+    const fido2lib = new Fido2Lib(fido2_options.new_options);
 
-    const ks = options.cred.keystore;
+    const ks = options.keystore;
     const get_uris = promisify(ks.get_uris.bind(ks));
     const remove_pub_key = promisify(ks.remove_pub_key.bind(ks));
     const get_pub_key_by_uri = promisify(ks.get_pub_key_by_uri.bind(ks));
@@ -23,7 +24,7 @@ module.exports = async function (fastify, options) {
         }
     }
 
-    fastify.register(require('fastify-secure-session'), options.cred.secure_session_options);
+    fastify.register(require('fastify-secure-session'), options.secure_session_options);
 
     for (const id of valid_ids) {
         fastify.log.info(`setting up routes for id: ${id}`);
