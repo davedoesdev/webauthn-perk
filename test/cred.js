@@ -9,15 +9,16 @@ const randomBytes = promisify(require('crypto').randomBytes);
 const port = 3000;
 const origin = `https://localhost:${port}`;
 const valid_ids = [];
+const urls = [];
 let fastify;
 
 before(async function () {
     for (let i = 0; i < 5; ++i) {
-        valid_ids.push((await randomBytes(64)).toString('hex'));
+        const id = (await randomBytes(64)).toString('hex');
+        valid_ids.push(id);
+        urls.push(`${origin}/cred/${id}`);
     }
-});
 
-beforeEach(async function () {
     fastify = require('fastify')({
         logger: true,
         https: {
@@ -34,6 +35,12 @@ beforeEach(async function () {
             valid_ids: valid_ids,
             secure_session_options: {
                 key: await readFile(path.join(__dirname, 'secret-session-key'))
+            },
+            fido2_options: {
+                attestation_expectations: {
+                    factor: 'either',
+                    origin: origin
+                }
             }
         }
     });
@@ -44,9 +51,11 @@ beforeEach(async function () {
     });
 
     await fastify.listen(port);
+
+    await browser.url(`${origin}/test/cred.html`);
 });
 
-afterEach(async function () {
+after(async function () {
     await fastify.close();
 });
 
@@ -73,40 +82,50 @@ describe('credentials', function () {
     this.timeout(5 * 60 * 1000);
     browser.timeouts('script', 5 * 60 * 1000);
 
-    it('should return 404 and challenge', async function () {
-        // browser should axios to backend and GET
-        // should get challenge etc
-        // load from static
-
-        await browser.url(`${origin}/test/cred.html`);
-
-        const url0 = `${origin}/cred/${valid_ids[0]}`;
-
+    it('should return 404', async function () {
         expect(await executeAsync(async url => {
             return (await axios(url, {
                 validateStatus: status => status === 404
             })).status;
-        }, url0)).to.equal(404);
+        }, urls[0])).to.equal(404);
+    });
 
-        const cred = await executeAsync(async url => {
-            const response = await axios(url, {
+    let key_info;
+
+    it('should return challenge and add public key', async function () {
+        key_info = await executeAsync(async url => {
+            const get_response = await axios(url, {
                 validateStatus: status => status === 404
             });
 
-            const data = response.data;
-            data.challenge = Uint8Array.from(data.challenge);
-            data.user.id = new TextEncoder('utf-8').encode(data.user.id);
+            const attestation_options = get_response.data;
+            attestation_options.challenge = Uint8Array.from(attestation_options.challenge);
+            attestation_options.user.id = new TextEncoder('utf-8').encode(attestation_options.user.id);
 
-            const cred = await navigator.credentials.create({
-                publicKey: response.data
+            const cred = await navigator.credentials.create({ publicKey: attestation_options });
+
+            const put_response = await axios.put(url, {
+                id: cred.id,
+                response: {
+                    attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
+                    clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
+                }
             });
 
-            return cred;
-        }, url0);
-
-        console.log("HELLO", cred);
-
-        // then do the same but use the data to make a credential
-
+            return put_response.data;
+        }, urls[0]);
     });
+
+    it('should return key info', async function () {
+        expect(await executeAsync(async url => {
+            return (await axios(url)).data;
+        }, urls[0])).to.eql(key_info);
+    });
+
+    // 409 when set again
+    // use to sign JWT (need issuer_id)
+    // bad data - check fails
+    // wrong session
+    // check > 1 ID and that don't affect each other
+    // coverage
 });

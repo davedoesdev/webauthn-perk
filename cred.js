@@ -3,6 +3,10 @@ const { promisify } = require('util');
 const { Fido2Lib } = require('fido2-lib');
 const default_user = 'Anonymous User';
 
+function BufferToArrayBuffer(buf) {
+    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+}
+
 module.exports = async function (fastify, options) {
     options = options.cred_options || options;
     const valid_ids = new Set(options.valid_ids.filter(id => id));
@@ -48,12 +52,16 @@ module.exports = async function (fastify, options) {
         });
 
         fastify.put(`/${id}`, async (request, reply) => {
+            const cred = request.body;
+            cred.id = BufferToArrayBuffer(Buffer.from(cred.id, 'base64'));
+            cred.response.attestationObject = BufferToArrayBuffer(Buffer.from(cred.response.attestationObject));
+            cred.response.clientDataJSON = BufferToArrayBuffer(Buffer.from(cred.response.clientDataJSON));
             const cred_response = await fido2lib.attestationResult(
                 request.body,
                 Object.assign({
                     challenge: request.session.get('challenge')
                 }, fido2_options.attestation_expectations));
-            const cred_id = Buffer.from(cred_response.authnrData.get('credId')).toString('base64');
+            const cred_id = Array.from(Buffer.from(cred_response.authnrData.get('credId')));
             await add_pub_key(id, {
                 pub_key: cred_response.authnrData.get('credentialPublicKeyPem'),
                 cred_id: cred_id
