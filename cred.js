@@ -4,8 +4,8 @@ const { Fido2Lib } = require('fido2-lib');
 
 module.exports = async function (fastify, options) {
     options = options.cred_options || options;
-    fastify.log.info(`valid ids: ${options.valid_ids}`);
-    const valid_ids = new Set(options.valid_ids);
+    const valid_ids = new Set(options.valid_ids.filter(id => id));
+    fastify.log.info(`valid ids: ${Array.from(valid_ids)}`);
 
     const fido2_options = options.fido2_options || {};
     const fido2lib = new Fido2Lib(fido2_options.new_options);

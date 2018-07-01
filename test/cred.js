@@ -3,7 +3,7 @@
 
 const { promisify } = require('util');
 const path = require('path');
-const readFile = promisify(require('fs').readFile);
+const readFile = require('fs').promises.readFile;
 const randomBytes = promisify(require('crypto').randomBytes);
 const valid_ids = [];
 let fastify;

@@ -1,19 +1,19 @@
 /*eslint-env node */
-const { promisify } = require('util');
 const path = require('path');
-const readFile = promisify(require('fs').readFile);
-const argv = require('yargs')
-    .array('id')
-    .demandOption('id')
-    .argv;
+const readFile = require('fs').promises.readFile;
 const fastify = require('fastify')({
     logger: true
 });
 
 (async () => {
+    if (!process.env.CONFERKIT_VALID_IDS) {
+        fastify.log.error('Please specify valid IDs in environment variable CONFERKIT_VALID_IDS');
+        process.exit(1);
+    }
+
     fastify.register(require('./backend.js'), {
         cred_options: {
-            valid_ids: argv.id,
+            valid_ids: process.env.CONFERKIT_VALID_IDS.split(','),
             secure_session_options: {
                 key: await readFile(path.join(__dirname, 'secret-session-key'))
             }
