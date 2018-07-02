@@ -70,7 +70,6 @@ module.exports = async function (fastify, options) {
 
             // catch error verifying
 
-            // catch error adding
         });
     }
 };

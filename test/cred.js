@@ -90,10 +90,10 @@ describe('credentials', function () {
         }, urls[0])).to.equal(404);
     });
 
-    let key_info;
+    let assertion_result, key_info;
 
     it('should return challenge and add public key', async function () {
-        key_info = await executeAsync(async url => {
+        [assertion_result, key_info] = await executeAsync(async url => {
             const get_response = await axios(url, {
                 validateStatus: status => status === 404
             });
@@ -104,15 +104,17 @@ describe('credentials', function () {
 
             const cred = await navigator.credentials.create({ publicKey: attestation_options });
 
-            const put_response = await axios.put(url, {
+            const assertion_result = {
                 id: cred.id,
                 response: {
                     attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
                     clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
                 }
-            });
+            };
+        
+            const put_response = await axios.put(url, assertion_result);
 
-            return put_response.data;
+            return [assertion_result, put_response.data];
         }, urls[0]);
     });
 
@@ -122,7 +124,16 @@ describe('credentials', function () {
         }, urls[0])).to.eql(key_info);
     });
 
-    // 409 when set again
+    it('should return 409', async function () {
+        expect(await executeAsync(async (url, assertion_result) => {
+            return (await axios.put(url, assertion_result, {
+                validateStatus: status => status === 409
+            })).status;
+        }, urls[0], assertion_result)).to.equal(409);
+    });
+
+    // why delay on exit?
+    // common code with server.js
     // use to sign JWT (need issuer_id)
     // bad data - check fails
     // wrong session
