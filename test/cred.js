@@ -10,7 +10,6 @@ const port = 3000;
 const origin = `https://localhost:${port}`;
 const valid_ids = [];
 const urls = [];
-let fastify;
 
 before(async function () {
     for (let i = 0; i < 5; ++i) {
@@ -19,7 +18,7 @@ before(async function () {
         urls.push(`${origin}/cred/${id}`);
     }
 
-    fastify = require('fastify')({
+    const fastify = require('fastify')({
         logger: true,
         https: {
             key: await readFile(path.join(__dirname, 'keys', 'server.key')),
@@ -39,9 +38,6 @@ before(async function () {
             fido2_options: {
                 new_options: {
                     attestation: 'none'
-                },
-                attestation_expectations: {
-                    origin: origin
                 }
             }
         }
@@ -54,11 +50,13 @@ before(async function () {
 
     await fastify.listen(port);
 
-    await browser.url(`${origin}/test/cred.html`);
-});
+    browser.on('end', function () {
+        (async function () {
+            await fastify.close();
+        })();
+    });
 
-after(async function () {
-    await fastify.close();
+    await browser.url(`${origin}/test/cred.html`);
 });
 
 async function executeAsync(f, ...args) {
@@ -134,11 +132,10 @@ describe('credentials', function () {
         }, urls[0], assertion_result)).to.equal(409);
     });
 
-    // common code with server.js - default origin?
-    // why delay on exit?
     // use to sign JWT (need issuer_id)
     // bad data - check fails
     // wrong session
     // check > 1 ID and that don't affect each other
     // coverage
+    // if CI is true, replay IO
 });

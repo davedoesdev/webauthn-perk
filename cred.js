@@ -8,11 +8,11 @@ function BufferToArrayBuffer(buf) {
 }
 
 module.exports = async function (fastify, options) {
-    options = options.cred_options || options;
+    options = options.cred_options || /* istanbul ignore next */ options;
     const valid_ids = new Set(options.valid_ids.filter(id => id));
     fastify.log.info(`valid ids: ${Array.from(valid_ids)}`);
 
-    const fido2_options = options.fido2_options || {};
+    const fido2_options = options.fido2_options || /* istanbul ignore next */ {};
     const fido2lib = new Fido2Lib(fido2_options.new_options);
 
     const ks = options.keystore;
@@ -59,6 +59,7 @@ module.exports = async function (fastify, options) {
             const cred_response = await fido2lib.attestationResult(
                 request.body,
                 Object.assign({
+                    origin: `https://${request.headers.host}`, // fido2-lib expects https
                     challenge: request.session.get('challenge'),
                     factor: 'either'
                 }, fido2_options.attestation_expectations));

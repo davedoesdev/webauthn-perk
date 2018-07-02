@@ -16,6 +16,15 @@ const fastify = require('fastify')({
             valid_ids: process.env.CONFERKIT_VALID_IDS.split(','),
             secure_session_options: {
                 key: await readFile(path.join(__dirname, 'secret-session-key'))
+            },
+            fido2_options: {
+                new_options: {
+                    attestation: process.env.CONFERKIT_ATTESTATION
+                },
+                attestation_expectations: {
+                    origin: process.env.CONFERKIT_EXPECTED_ORIGIN,
+                    factor: process.env.CONFERKIT_EXPECTED_FACTOR
+                }
             }
         }
     });

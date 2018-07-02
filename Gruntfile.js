@@ -1,4 +1,13 @@
 /*eslint-env node */
+
+const path = require('path');
+const mod_path = path.join('.', 'node_modules');
+const bin_path = path.join(mod_path, '.bin');
+const nyc_path = path.join(bin_path, 'nyc');
+const grunt_path = process.platform === 'win32' ?
+    path.join(mod_path, 'grunt', 'bin', 'grunt') :
+    path.join(bin_path, 'grunt');
+
 module.exports = function (grunt) {
     grunt.initConfig({
         eslint: {
@@ -11,7 +20,11 @@ module.exports = function (grunt) {
 
         exec: {
             test_cred: './node_modules/.bin/wdio',
-            wdio_cleanup: './test/wdio_cleanup.sh'
+            wdio_cleanup: './test/wdio_cleanup.sh',
+
+            cover: `${nyc_path} -x Gruntfile.js -x 'test/**' node ${grunt_path} test`,
+            cover_report: `${nyc_path} report -r lcov`,
+            cover_check: `${nyc_path} check-coverage --statements 100 --branches 100 --functions 100 --lines 100`
         }
     });
 
@@ -21,6 +34,7 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-force-task');
 
     grunt.registerTask('lint', 'eslint');
+
     grunt.registerTask('test-cred',
         process.env.CI === 'true' ?
             'mochaTest:cred' : [
@@ -31,6 +45,12 @@ module.exports = function (grunt) {
                 'exit_with_test_cred_status'
             ]);
     grunt.registerTask('test', 'test-cred');
+
+    grunt.registerTask('coverage', [
+        'exec:cover',
+        'exec:cover_report',
+        'exec:cover_check'
+    ]);
 
     grunt.registerTask('exit_with_test_cred_status', function () {
         this.requires(['exec:test_cred']);
