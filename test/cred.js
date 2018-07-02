@@ -134,8 +134,10 @@ describe('credentials', function () {
 
     // use to sign JWT (need issuer_id)
     // bad data - check fails
+    // catch error verifying
     // wrong session
     // check > 1 ID and that don't affect each other
-    // coverage
     // if CI is true, replay IO
+    // pass lint
+    // 100% coverage
 });

@@ -69,9 +69,6 @@ module.exports = async function (fastify, options) {
                 cred_id: cred_id
             });
             return { cred_id: cred_id };
-
-            // catch error verifying
-
         });
     }
 };
