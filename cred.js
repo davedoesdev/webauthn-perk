@@ -59,7 +59,8 @@ module.exports = async function (fastify, options) {
             const cred_response = await fido2lib.attestationResult(
                 request.body,
                 Object.assign({
-                    challenge: request.session.get('challenge')
+                    challenge: request.session.get('challenge'),
+                    factor: 'either'
                 }, fido2_options.attestation_expectations));
             const cred_id = Array.from(Buffer.from(cred_response.authnrData.get('credId')));
             await add_pub_key(id, {

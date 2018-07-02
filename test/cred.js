@@ -37,8 +37,10 @@ before(async function () {
                 key: await readFile(path.join(__dirname, 'secret-session-key'))
             },
             fido2_options: {
+                new_options: {
+                    attestation: 'none'
+                },
                 attestation_expectations: {
-                    factor: 'either',
                     origin: origin
                 }
             }
@@ -132,8 +134,8 @@ describe('credentials', function () {
         }, urls[0], assertion_result)).to.equal(409);
     });
 
+    // common code with server.js - default origin?
     // why delay on exit?
-    // common code with server.js
     // use to sign JWT (need issuer_id)
     // bad data - check fails
     // wrong session
