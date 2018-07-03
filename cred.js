@@ -51,18 +51,24 @@ module.exports = async function (fastify, options) {
             return { cred_id: entry.cred_id };
         });
 
-        fastify.put(`/${id}`, async (request, reply) => {
+        fastify.put(`/${id}`, async (request) => {
             const cred = request.body;
             cred.id = BufferToArrayBuffer(Buffer.from(cred.id, 'base64'));
             cred.response.attestationObject = BufferToArrayBuffer(Buffer.from(cred.response.attestationObject));
             cred.response.clientDataJSON = BufferToArrayBuffer(Buffer.from(cred.response.clientDataJSON));
-            const cred_response = await fido2lib.attestationResult(
-                request.body,
-                Object.assign({
-                    origin: `https://${request.headers.host}`, // fido2-lib expects https
-                    challenge: request.session.get('challenge'),
-                    factor: 'either'
-                }, fido2_options.attestation_expectations));
+            let cred_response;
+            try {
+                cred_response = await fido2lib.attestationResult(
+                    request.body,
+                    Object.assign({
+                        origin: `https://${request.headers.host}`, // fido2-lib expects https
+                        challenge: request.session.get('challenge'),
+                        factor: 'either'
+                    }, fido2_options.attestation_expectations));
+            } catch (ex) {
+                ex.statusCode = 400;
+                throw ex;
+            }
             const cred_id = Array.from(Buffer.from(cred_response.authnrData.get('credId')));
             await add_pub_key(id, {
                 pub_key: cred_response.authnrData.get('credentialPublicKeyPem'),

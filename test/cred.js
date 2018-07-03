@@ -91,6 +91,32 @@ describe('credentials', function () {
         }, urls[0])).to.equal(404);
     });
 
+    it('should return 400', async function () {
+        expect(await executeAsync(async url => {
+            const get_response = await axios(url, {
+                validateStatus: status => status === 404
+            });
+
+            const attestation_options = get_response.data;
+            attestation_options.challenge = Uint8Array.from(attestation_options.challenge, x => x ^ 1);
+            attestation_options.user.id = new TextEncoder('utf-8').encode(attestation_options.user.id);
+
+            const cred = await navigator.credentials.create({ publicKey: attestation_options });
+
+            const assertion_result = {
+                id: cred.id,
+                response: {
+                    attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
+                    clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
+                }
+            };
+        
+            return (await axios.put(url, assertion_result, {
+                validateStatus: status => status === 400
+            })).status;
+        }, urls[0])).to.equal(400);
+    });
+
     let assertion_result, key_info;
 
     it('should return challenge and add public key', async function () {
@@ -178,12 +204,9 @@ describe('credentials', function () {
 
 
     // use to sign JWT (need issuer_id)
-    // bad data - check fails
-    // catch error verifying
     // wrong session
     // check > 1 ID and that don't affect each other
     // check can only access valid_ids
     // if CI is true, replay IO
-    // pass lint
-    // 100% coverage
+    // add schemas for requests and responses
 });
