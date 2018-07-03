@@ -10,6 +10,7 @@ const port = 3000;
 const origin = `https://localhost:${port}`;
 const valid_ids = [];
 const urls = [];
+let fastify;
 
 before(async function () {
     for (let i = 0; i < 5; ++i) {
@@ -18,7 +19,7 @@ before(async function () {
         urls.push(`${origin}/cred/${id}`);
     }
 
-    const fastify = require('fastify')({
+    fastify = require('fastify')({
         logger: true,
         https: {
             key: await readFile(path.join(__dirname, 'keys', 'server.key')),
@@ -132,11 +133,56 @@ describe('credentials', function () {
         }, urls[0], assertion_result)).to.equal(409);
     });
 
+    it('should delete keys not in valid ID list', async function () {
+        const dummy_fastify = {
+            addHook() {},
+            register(f, opts) {
+                this.f = f;
+                this.opts = opts;
+            },
+            log: fastify.log,
+            get() {},
+            put() {}
+        };
+
+        // first check we don't delete valid ID
+        await require('../backend.js')(dummy_fastify, {
+            authorize_jwt_options: {
+                db_dir: path.join(__dirname, 'store'),
+            },
+            cred_options: {
+                valid_ids: valid_ids
+            }
+        });
+        await dummy_fastify.f(dummy_fastify, dummy_fastify.opts);
+        expect(await executeAsync(async url => {
+            return (await axios(url)).data;
+        }, urls[0])).to.eql(key_info);
+
+        // then check we delete invalid IDs
+        await require('../backend.js')(dummy_fastify, {
+            authorize_jwt_options: {
+                db_dir: path.join(__dirname, 'store'),
+            },
+            cred_options: {
+                valid_ids: valid_ids.slice(1)
+            }
+        });
+        await dummy_fastify.f(dummy_fastify, dummy_fastify.opts);
+        expect(await executeAsync(async url => {
+            return (await axios(url, {
+                validateStatus: status => status === 404
+            })).status;
+        }, urls[0])).to.equal(404);
+    });
+
+
     // use to sign JWT (need issuer_id)
     // bad data - check fails
     // catch error verifying
     // wrong session
     // check > 1 ID and that don't affect each other
+    // check can only access valid_ids
     // if CI is true, replay IO
     // pass lint
     // 100% coverage
