@@ -13,7 +13,7 @@ const urls = [];
 let fastify;
 
 before(async function () {
-    for (let i = 0; i < 5; ++i) {
+    for (let i = 0; i < 2; ++i) {
         const id = (await randomBytes(64)).toString('hex');
         valid_ids.push(id);
         urls.push(`${origin}/cred/${id}`);
@@ -117,10 +117,8 @@ describe('credentials', function () {
         }, urls[0])).to.equal(400);
     });
 
-    let assertion_result, key_info;
-
-    it('should return challenge and add public key', async function () {
-        [assertion_result, key_info] = await executeAsync(async url => {
+    async function auth(url) {
+        return await executeAsync(async url => {
             const get_response = await axios(url, {
                 validateStatus: status => status === 404
             });
@@ -142,7 +140,13 @@ describe('credentials', function () {
             const put_response = await axios.put(url, assertion_result);
 
             return [assertion_result, put_response.data];
-        }, urls[0]);
+        }, url);
+    }
+
+    let assertion_result, key_info;
+
+    it('should return challenge and add public key', async function () {
+        [assertion_result, key_info] = await auth(urls[0]);
     });
 
     it('should return key info', async function () {
@@ -201,12 +205,46 @@ describe('credentials', function () {
             })).status;
         }, urls[0])).to.equal(404);
     });
+    
+    it('should return 404 on invalid URL', async function () {
+        expect(await executeAsync(async url => {
+            return (await axios(url, {
+                validateStatus: status => status === 404
+            })).status;
+        }, 'foobar')).to.equal(404);
+
+        expect(await executeAsync(async (url, assertion_result) => {
+            return (await axios.put(url, assertion_result, {
+                validateStatus: status => status === 404
+            })).status;
+        }, 'foobar', assertion_result)).to.equal(404);
+    });
+
+    it('should return 404 on second URL', async function () {
+        expect(await executeAsync(async url => {
+            return (await axios(url, {
+                validateStatus: status => status === 404
+            })).status;
+        }, urls[1])).to.equal(404);
+    });
+
+    it('should return 400 on second URL', async function () {
+        expect(await executeAsync(async (url, assertion_result) => {
+            return (await axios.put(url, assertion_result, {
+                validateStatus: status => status === 400
+            })).status;
+        }, urls[1], assertion_result)).to.equal(400);
+    });
+
+    it('should return different key info for second URL', async function () {
+        const [_, key_info2] = await auth(urls[1]);
+        expect(key_info2).not.to.eql(key_info);
+    });
 
 
-    // use to sign JWT (need issuer_id)
     // wrong session
-    // check > 1 ID and that don't affect each other
-    // check can only access valid_ids
+    // check > 1 ID and that don't affect each other (use second key info to auth to first)
+    // use to sign JWT (need issuer_id)
     // if CI is true, replay IO
     // add schemas for requests and responses
 });
