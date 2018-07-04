@@ -79,6 +79,43 @@ async function executeAsync(f, ...args) {
     return r;
 }
 
+async function auth(url, options) {
+    options = Object.assign({
+        valid_status: 200
+    }, options);
+
+    return await executeAsync(async (url, options) => {
+        const get_response = await axios(url, {
+            validateStatus: status => status === 404
+        });
+
+        const attestation_options = get_response.data;
+        attestation_options.challenge = Uint8Array.from(attestation_options.challenge,
+            x => options.modify_challenge ? x ^ 1 : x);
+        attestation_options.user.id = new TextEncoder('utf-8').encode(attestation_options.user.id);
+
+        const cred = await navigator.credentials.create({ publicKey: attestation_options });
+
+        const assertion_result = {
+            id: cred.id,
+            response: {
+                attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
+                clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
+            }
+        };
+
+        if (options.expire_session) {
+            document.cookie = 'session=; Path=/cred/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        }
+
+        const put_response = await axios.put(url, assertion_result, {
+            validateStatus: status => status === options.valid_status
+        });
+
+        return [assertion_result, put_response.data, put_response.status];
+    }, url, options);
+}
+
 describe('credentials', function () {
     this.timeout(5 * 60 * 1000);
     browser.timeouts('script', 5 * 60 * 1000);
@@ -91,62 +128,26 @@ describe('credentials', function () {
         }, urls[0])).to.equal(404);
     });
 
-    it('should return 400', async function () {
-        expect(await executeAsync(async url => {
-            const get_response = await axios(url, {
-                validateStatus: status => status === 404
-            });
-
-            const attestation_options = get_response.data;
-            attestation_options.challenge = Uint8Array.from(attestation_options.challenge, x => x ^ 1);
-            attestation_options.user.id = new TextEncoder('utf-8').encode(attestation_options.user.id);
-
-            const cred = await navigator.credentials.create({ publicKey: attestation_options });
-
-            const assertion_result = {
-                id: cred.id,
-                response: {
-                    attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
-                    clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
-                }
-            };
-        
-            return (await axios.put(url, assertion_result, {
-                validateStatus: status => status === 400
-            })).status;
-        }, urls[0])).to.equal(400);
+    it('should return 400 for invalid signature', async function () {
+        const [unused_assertion_result, unused_key_info, status] = await auth(urls[0], {
+            valid_status: 400,
+            modify_challenge: true });
+        expect(status).to.equal(400);
     });
 
-    async function auth(url) {
-        return await executeAsync(async url => {
-            const get_response = await axios(url, {
-                validateStatus: status => status === 404
-            });
-
-            const attestation_options = get_response.data;
-            attestation_options.challenge = Uint8Array.from(attestation_options.challenge);
-            attestation_options.user.id = new TextEncoder('utf-8').encode(attestation_options.user.id);
-
-            const cred = await navigator.credentials.create({ publicKey: attestation_options });
-
-            const assertion_result = {
-                id: cred.id,
-                response: {
-                    attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
-                    clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
-                }
-            };
-        
-            const put_response = await axios.put(url, assertion_result);
-
-            return [assertion_result, put_response.data];
-        }, url);
-    }
+    it('should return 400 for expired session', async function () {
+        const [unused_assertion_result_, unused_key_info, status] = await auth(urls[0], {
+            valid_status: 400,
+            expire_session: true });
+        expect(status).to.equal(400);
+    });
 
     let assertion_result, key_info;
 
     it('should return challenge and add public key', async function () {
-        [assertion_result, key_info] = await auth(urls[0]);
+        let status;
+        [assertion_result, key_info, status] = await auth(urls[0]);
+        expect(status).to.equal(200);
     });
 
     it('should return key info', async function () {
@@ -237,14 +238,14 @@ describe('credentials', function () {
     });
 
     it('should return different key info for second URL', async function () {
-        const [_, key_info2] = await auth(urls[1]);
+        const [unused_assertion_result, key_info2] = await auth(urls[1]);
         expect(key_info2).not.to.eql(key_info);
     });
 
 
-    // wrong session
+    // we need to set a timeout on the challenge
     // check > 1 ID and that don't affect each other (use second key info to auth to first)
     // use to sign JWT (need issuer_id)
     // if CI is true, replay IO
-    // add schemas for requests and responses
+    // add schemas for requests and responses + test invalid inc undefined assertion result (415)
 });
