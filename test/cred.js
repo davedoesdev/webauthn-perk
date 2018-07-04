@@ -243,9 +243,9 @@ describe('credentials', function () {
     });
 
 
-    // we need to set a timeout on the challenge
-    // check > 1 ID and that don't affect each other (use second key info to auth to first)
+    // test challenge timeout
     // use to sign JWT (need issuer_id)
+    // check > 1 ID and that don't affect each other (use second key info to auth to first)
     // if CI is true, replay IO
     // add schemas for requests and responses + test invalid inc undefined assertion result (415)
 });

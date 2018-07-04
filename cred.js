@@ -11,6 +11,7 @@ module.exports = async function (fastify, options) {
     options = options.cred_options || /* istanbul ignore next */ options;
     const valid_ids = new Set(options.valid_ids.filter(id => id));
     fastify.log.info(`valid ids: ${Array.from(valid_ids)}`);
+    const challenge_timeout = options.challenge_timeout || 60000;
 
     const fido2_options = options.fido2_options || /* istanbul ignore next */ {};
     const fido2lib = new Fido2Lib(fido2_options.new_options);
@@ -46,12 +47,24 @@ module.exports = async function (fastify, options) {
                     id: default_user
                 }, attestation_options.user, fido2_options.user);
                 request.session.set('challenge', attestation_options.challenge);
+                request.session.set('challengeTime', Date.now());
                 return attestation_options;
             }
             return { cred_id: entry.cred_id };
         });
 
         fastify.put(`/${id}`, async (request) => {
+            const challengeTime = request.session.get('challengeTime');
+            if (!challengeTime) {
+                const err = new Error('no challenge timestamp');
+                err.statusCode = 400;
+                throw err;
+            }
+            if ((challengeTime + challenge_timeout) <= Date.now()) {
+                const err = new Error('challenge timed out');
+                err.statusCode = 400;
+                throw err;
+            }
             const cred = request.body;
             cred.id = BufferToArrayBuffer(Buffer.from(cred.id, 'base64'));
             cred.response.attestationObject = BufferToArrayBuffer(Buffer.from(cred.response.attestationObject));
@@ -61,7 +74,9 @@ module.exports = async function (fastify, options) {
                 cred_response = await fido2lib.attestationResult(
                     request.body,
                     Object.assign({
-                        origin: `https://${request.headers.host}`, // fido2-lib expects https
+                        // fido2-lib expects https
+                        origin: `https://${request.headers.host}`,
+                        // session is signed and we never set challengeTime without challenge
                         challenge: request.session.get('challenge'),
                         factor: 'either'
                     }, fido2_options.attestation_expectations));
