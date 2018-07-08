@@ -1,11 +1,9 @@
 /*eslint-env node */
 const { promisify } = require('util');
 const { Fido2Lib } = require('fido2-lib');
+const { BufferToArrayBuffer } = require('./common.js');
+const schemas = require('./schemas.js').cred();
 const default_user = 'Anonymous User';
-
-function BufferToArrayBuffer(buf) {
-    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-}
 
 module.exports = async function (fastify, options) {
     options = options.cred_options || /* istanbul ignore next */ options;
@@ -18,9 +16,13 @@ module.exports = async function (fastify, options) {
 
     const ks = options.keystore;
     const get_uris = promisify(ks.get_uris.bind(ks));
-    const remove_pub_key = promisify(ks.remove_pub_key.bind(ks));
-    const get_pub_key_by_uri = promisify(ks.get_pub_key_by_uri.bind(ks));
     const add_pub_key = promisify(ks.add_pub_key.bind(ks));
+    const remove_pub_key = promisify(ks.remove_pub_key.bind(ks));
+    const get_pub_key_by_uri = promisify((uri, cb) => {
+        ks.get_pub_key_by_uri(uri, (err, pub_key, issuer_id) => {
+            cb(err, { pub_key, issuer_id });
+        });
+    });
 
     // Delete pub keys that aren't passed as argument
     for (const id of await get_uris()) {
@@ -35,9 +37,9 @@ module.exports = async function (fastify, options) {
     for (const id of valid_ids) {
         fastify.log.info(`setting up routes for id: ${id}`);
 
-        fastify.get(`/${id}`, async (request, reply) => {
-            const entry = await get_pub_key_by_uri(id);
-            if (entry === null) {
+        fastify.get(`/${id}`, { schema: schemas.get }, async (request, reply) => {
+            const { pub_key, issuer_id } = await get_pub_key_by_uri(id);
+            if (pub_key === null) {
                 reply.code(404);
                 const attestation_options = await fido2lib.attestationOptions(fido2_options.attestation_options);
                 attestation_options.challenge = Array.from(Buffer.from(attestation_options.challenge));
@@ -50,17 +52,17 @@ module.exports = async function (fastify, options) {
                 request.session.set('challengeTime', Date.now());
                 return attestation_options;
             }
-            return { cred_id: entry.cred_id };
+            return { cred_id: pub_key.cred_id, issuer_id };
         });
 
-        fastify.put(`/${id}`, async (request) => {
+        fastify.put(`/${id}`, { schema: schemas.put }, async request => {
             const challengeTime = request.session.get('challengeTime');
             if (!challengeTime) {
                 const err = new Error('no challenge timestamp');
                 err.statusCode = 400;
                 throw err;
             }
-            if ((challengeTime + challenge_timeout) <= Date.now()) {
+            if ((challengeTime + challenge_timeout) <= Date.now('dummy' /* for test */)) {
                 const err = new Error('challenge timed out');
                 err.statusCode = 400;
                 throw err;
@@ -85,11 +87,11 @@ module.exports = async function (fastify, options) {
                 throw ex;
             }
             const cred_id = Array.from(Buffer.from(cred_response.authnrData.get('credId')));
-            await add_pub_key(id, {
+            const issuer_id = await add_pub_key(id, {
                 pub_key: cred_response.authnrData.get('credentialPublicKeyPem'),
                 cred_id: cred_id
             });
-            return { cred_id: cred_id };
+            return { cred_id, issuer_id };
         });
     }
 };

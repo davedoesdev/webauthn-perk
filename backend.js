@@ -19,6 +19,16 @@ module.exports = fp(async function (fastify, options) {
         await close();
     });
 
+    const perk_options = Object.assign({
+        prefix: '/perk',
+        authz
+    }, options.perk_options);
+
+    fastify.register(require('./perk.js'), {
+        prefix: perk_options.prefix,
+        perk_options: perk_options
+    });
+
     fastify.register(require('./cred.js'), {
         prefix: '/cred',
         cred_options: Object.assign({

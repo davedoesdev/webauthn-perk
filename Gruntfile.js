@@ -11,7 +11,12 @@ const grunt_path = process.platform === 'win32' ?
 module.exports = function (grunt) {
     grunt.initConfig({
         eslint: {
-            target: ['*.js', 'test/**/*.js', '!test/fixtures/axios.min.js']
+            target: [
+                '*.js',
+                'test/**/*.js',
+                '!test/fixtures/axios.min.js',
+                '!test/fixtures/jsrsasign-all-min.js'
+            ]
         },
 
         mochaTest: {

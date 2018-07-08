@@ -1,5 +1,5 @@
 /* eslint-env node, mocha, browser */
-/* global browser, axios */
+/* global browser, axios, KJUR */
 
 const { promisify } = require('util');
 const path = require('path');
@@ -8,6 +8,7 @@ const { expect } = require('chai');
 const randomBytes = promisify(require('crypto').randomBytes);
 const port = 3000;
 const origin = `https://localhost:${port}`;
+const audience = 'urn:conferkit:cred-test';
 const valid_ids = [];
 const urls = [];
 let fastify;
@@ -40,6 +41,52 @@ before(async function () {
                 new_options: {
                     attestation: 'none'
                 }
+            }
+        },
+        perk_options: {
+            response_schema: {
+                200: {
+                    type: 'object',
+                    required: [
+                        'uri',
+                        'payload'
+                    ],
+                    properties: {
+                        uri: { type: 'string' },
+                        payload: {
+                            type: 'object',
+                            required: [
+                                'aud',
+                                'foo',
+                                'exp',
+                                'iat',
+                                'jti',
+                                'nbf'
+                            ],
+                            additionalProperties: false,
+                            properties: {
+                                aud: {
+                                    type: 'string',
+                                    const: audience
+                                },
+                                foo: {
+                                    type: 'integer',
+                                    const: 90
+                                },
+                                exp: { type: 'integer' },
+                                iat: { type: 'integer' },
+                                jti: { type: 'string' },
+                                nbf: { type: 'integer' }
+                            }
+                        }
+                    }
+                }
+            },
+            handler: async info => {
+                return {
+                    uri: info.uri,
+                    payload: info.payload
+                };
             }
         }
     });
@@ -96,7 +143,7 @@ async function auth(url, options) {
 
         const cred = await navigator.credentials.create({ publicKey: attestation_options });
 
-        const assertion_result = {
+        const attestation_result = {
             id: cred.id,
             response: {
                 attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
@@ -108,11 +155,11 @@ async function auth(url, options) {
             document.cookie = 'session=; Path=/cred/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
         }
 
-        const put_response = await axios.put(url, assertion_result, {
+        const put_response = await axios.put(url, attestation_result, {
             validateStatus: status => status === options.valid_status
         });
 
-        return [assertion_result, put_response.data, put_response.status];
+        return [attestation_result, put_response.data, put_response.status];
     }, url, options);
 }
 
@@ -129,24 +176,47 @@ describe('credentials', function () {
     });
 
     it('should return 400 for invalid signature', async function () {
-        const [unused_assertion_result, unused_key_info, status] = await auth(urls[0], {
+        const [unused_attestation_result, unused_key_info, status] = await auth(urls[0], {
             valid_status: 400,
-            modify_challenge: true });
+            modify_challenge: true
+        });
         expect(status).to.equal(400);
     });
 
     it('should return 400 for expired session', async function () {
-        const [unused_assertion_result_, unused_key_info, status] = await auth(urls[0], {
+        const [unused_attestation_result, unused_key_info, status] = await auth(urls[0], {
             valid_status: 400,
-            expire_session: true });
+            expire_session: true
+        });
         expect(status).to.equal(400);
     });
 
-    let assertion_result, key_info;
+    it('should return 400 for expired challenge', async function () {
+        const orig_now = Date.now;
+        Date.now = function (dummy) {
+            let now = orig_now.call(this);
+            if (dummy === 'dummy') {
+                now += 60000;
+            }
+            return now;
+        };
+
+        try {
+            const [unused_attestation_result, unused_key_info, status] = await auth(urls[0], {
+                valid_status: 400,
+                expire_challenge: true
+            });
+            expect(status).to.equal(400);
+        } finally {
+            Date.now = orig_now;
+        }
+    });
+
+    let attestation_result, key_info;
 
     it('should return challenge and add public key', async function () {
         let status;
-        [assertion_result, key_info, status] = await auth(urls[0]);
+        [attestation_result, key_info, status] = await auth(urls[0]);
         expect(status).to.equal(200);
     });
 
@@ -157,11 +227,84 @@ describe('credentials', function () {
     });
 
     it('should return 409', async function () {
-        expect(await executeAsync(async (url, assertion_result) => {
-            return (await axios.put(url, assertion_result, {
+        expect(await executeAsync(async (url, attestation_result) => {
+            return (await axios.put(url, attestation_result, {
                 validateStatus: status => status === 409
             })).status;
-        }, urls[0], assertion_result)).to.equal(409);
+        }, urls[0], attestation_result)).to.equal(409);
+    });
+
+    it('should be able to use key info to sign assertion for authorize-jwt', async function () {
+        const [data, status ] = await executeAsync(async (cred_url, audience, perk_url) => {
+            function generateJWT(claims, expires) {
+                const header = { alg: 'none', typ: 'JWT' };
+                const new_claims = Object.assign({}, claims);
+                const now = new Date();
+                const jti = new Uint8Array(64);
+
+                window.crypto.getRandomValues(jti);
+
+                new_claims.jti = Array.from(jti).map(x => String.fromCharCode(x)).join('');
+                new_claims.iat = Math.floor(now.getTime() / 1000);
+                new_claims.nbf = Math.floor(now.getTime() / 1000);
+
+                if (expires) {
+                    new_claims.exp = Math.floor(expires.getTime() / 1000);
+                }
+
+                return KJUR.jws.JWS.sign(null, header, new_claims);
+            }
+
+            const payload = {
+                aud: audience,
+                foo: 90
+            };
+
+            const expires = new Date();
+            expires.setSeconds(expires.getSeconds() + 10);
+
+            const jwt = generateJWT(payload, expires);
+
+            const key_info = (await axios(cred_url)).data;
+
+            const assertion = await navigator.credentials.get({
+                publicKey: {
+                    challenge: new TextEncoder('utf-8').encode(jwt),
+                    allowCredentials: [{
+                        id: Uint8Array.from(key_info.cred_id),
+                        type: 'public-key'
+                    }]
+                }
+            });
+
+            const assertion_result = {
+                issuer_id: key_info.issuer_id,
+                assertion: {
+                    id: assertion.id,
+                    response: {
+                        authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
+                        clientDataJSON: new TextDecoder('utf-8').decode(assertion.response.clientDataJSON),
+                        signature: Array.from(new Uint8Array(assertion.response.signature)),
+                        userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
+                    }
+                }
+            };
+
+            const get_response = await axios(perk_url, {
+                params: {
+                    assertion_result: JSON.stringify(assertion_result)
+                }
+            });
+
+            delete get_response.data.payload.jti; // binary string so causes terminal escapes when logged in test
+
+            return [get_response.data, get_response.status];
+        }, urls[0], audience, `${origin}/perk`);
+
+        expect(status).to.equal(200);
+        expect(data.uri).to.equal(valid_ids[0]);
+        expect(data.payload.aud).to.equal(audience);
+        expect(data.payload.foo).to.equal(90);
     });
 
     it('should delete keys not in valid ID list', async function () {
@@ -214,11 +357,11 @@ describe('credentials', function () {
             })).status;
         }, 'foobar')).to.equal(404);
 
-        expect(await executeAsync(async (url, assertion_result) => {
-            return (await axios.put(url, assertion_result, {
+        expect(await executeAsync(async (url, attestation_result) => {
+            return (await axios.put(url, attestation_result, {
                 validateStatus: status => status === 404
             })).status;
-        }, 'foobar', assertion_result)).to.equal(404);
+        }, 'foobar', attestation_result)).to.equal(404);
     });
 
     it('should return 404 on second URL', async function () {
@@ -230,22 +373,21 @@ describe('credentials', function () {
     });
 
     it('should return 400 on second URL', async function () {
-        expect(await executeAsync(async (url, assertion_result) => {
-            return (await axios.put(url, assertion_result, {
+        expect(await executeAsync(async (url, attestation_result) => {
+            return (await axios.put(url, attestation_result, {
                 validateStatus: status => status === 400
             })).status;
-        }, urls[1], assertion_result)).to.equal(400);
+        }, urls[1], attestation_result)).to.equal(400);
     });
 
     it('should return different key info for second URL', async function () {
-        const [unused_assertion_result, key_info2] = await auth(urls[1]);
+        const [unused_attestation_result, key_info2] = await auth(urls[1]);
         expect(key_info2).not.to.eql(key_info);
     });
 
-
-    // test challenge timeout
-    // use to sign JWT (need issuer_id)
+    // add schemas for requests and responses + test invalid inc undefined assertion result (415)
     // check > 1 ID and that don't affect each other (use second key info to auth to first)
     // if CI is true, replay IO
-    // add schemas for requests and responses + test invalid inc undefined assertion result (415)
+    // fido2-lib - needs updating
+    // should this be a separate module? e.g. webauthn-perk
 });
