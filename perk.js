@@ -1,7 +1,7 @@
 /*eslint-env node */
 const url = require('url');
 const { promisify } = require('util');
-const { BufferToArrayBuffer } = require('./common.js');
+const { fix_assertion_types } = require('./common.js');
 
 module.exports = async function (fastify, options) {
     options = options.perk_options || /* istanbul ignore next */ options;
@@ -29,15 +29,8 @@ module.exports = async function (fastify, options) {
     });
 
     fastify.post('/', { schema: schemas.post }, async request => {
-        const assertion = request.body.assertion;
-        assertion.id = BufferToArrayBuffer(Buffer.from(assertion.id, 'base64'));
-        assertion.response.authenticatorData = BufferToArrayBuffer(Buffer.from(assertion.response.authenticatorData));
-        assertion.response.clientDataJSON = BufferToArrayBuffer(Buffer.from(assertion.response.clientDataJSON));
-        assertion.response.signature = BufferToArrayBuffer(Buffer.from(assertion.response.signature));
-        assertion.response.userHandle = assertion.response.userHandle ?
-            BufferToArrayBuffer(Buffer.from(assertion.response.userHandle)) :
-            /* istanbul ignore next */ undefined;
-
+        const assertion = fix_assertion_types(request.body.assertion);
+        // complete_webauthn_token passed to authorize-jwt can override these
         const token = {
             issuer_id: request.body.issuer_id,
             // fido2-lib expects https
@@ -49,7 +42,6 @@ module.exports = async function (fastify, options) {
             assertion,
             request
         };
-
         return await options.handler(await authorize(token), request);
     });
 };

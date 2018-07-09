@@ -221,9 +221,11 @@ describe('credentials', function () {
     });
 
     it('should return key info', async function () {
-        expect(await executeAsync(async url => {
+        const key_info2 = await executeAsync(async url => {
             return (await axios(url)).data;
-        }, urls[0])).to.eql(key_info);
+        }, urls[0]);
+        delete key_info2.challenge;
+        expect(key_info2).to.eql(key_info);
     });
 
     it('should return 409', async function () {
@@ -306,7 +308,13 @@ describe('credentials', function () {
         expect(data.payload.aud).to.equal(audience);
         expect(data.payload.foo).to.equal(90);
     });
-
+/*
+    it('should verify assertion so client knows it successfully registered', async function () {
+        await executeAsync(async url => {
+            const key_info = (await axios(url)).data;
+        }, urls[0]);
+    });
+*/
     it('should delete keys not in valid ID list', async function () {
         const dummy_fastify = {
             addHook() {},
@@ -316,7 +324,8 @@ describe('credentials', function () {
             },
             log: fastify.log,
             get() {},
-            put() {}
+            put() {},
+            post() {}
         };
 
         // first check we don't delete valid ID
@@ -329,9 +338,11 @@ describe('credentials', function () {
             }
         });
         await dummy_fastify.f(dummy_fastify, dummy_fastify.opts);
-        expect(await executeAsync(async url => {
+        const key_info2 = await executeAsync(async url => {
             return (await axios(url)).data;
-        }, urls[0])).to.eql(key_info);
+        }, urls[0]);
+        delete key_info2.challenge;
+        expect(key_info2).to.eql(key_info);
 
         // then check we delete invalid IDs
         await require('../backend.js')(dummy_fastify, {
@@ -385,6 +396,8 @@ describe('credentials', function () {
         expect(key_info2).not.to.eql(key_info);
     });
 
+    // add verify
+    // how are challenges (array buffers) serialized in session?
     // add schemas for requests and responses + test invalid inc undefined assertion result (415)
     // check > 1 ID and that don't affect each other (use second key info to auth to first)
     // if CI is true, replay IO

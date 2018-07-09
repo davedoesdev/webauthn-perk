@@ -16,17 +16,23 @@ function byte_array(nullable) {
 }
 
 exports.cred = function () {
-    const key_info = {
-        type: 'object',
-        properties: {
-            cred_id: byte_array(),
-            issuer_id: { type: 'string' }
+    function key_info(challenge) {
+        const r = {
+            type: 'object',
+            properties: {
+                cred_id: byte_array(),
+                issuer_id: { type: 'string' }
+            }
+        };
+        if (challenge) {
+            r.properties.challenge = byte_array();
         }
-    };
+        return r;
+    }
     return {
         get: {
             response: {
-                200: key_info,
+                200: key_info(true),
                 404: {
                     type: 'object',
                     properties: {
@@ -97,7 +103,35 @@ exports.cred = function () {
                 }
             },
             response: {
-                200: key_info
+                200: key_info(false)
+            }
+        },
+
+        post: {
+            type: 'object',
+            required: [
+                'id',
+                'response'
+            ],
+            additionalProperties: false,
+            properties: {
+                id: { type: 'string' },
+                response: {
+                    type: 'object',
+                    required: [
+                        'authenticatorData',
+                        'clientDataJSON',
+                        'signature',
+                        'userHandle'
+                    ],
+                    additionalProperties: false,
+                    properties: {
+                        authenticatorData: byte_array(false),
+                        clientDataJSON: { type: 'string' },
+                        signature: byte_array(false),
+                        userHandle: byte_array(true)
+                    }
+                }
             }
         }
     };
@@ -129,33 +163,7 @@ exports.perk = function (options) {
                 additionalProperties: false,
                 properties: {
                     issuer_id: { type: 'string' },
-                    assertion: {
-                        type: 'object',
-                        required: [
-                            'id',
-                            'response'
-                        ],
-                        additionalProperties: false,
-                        properties: {
-                            id: { type: 'string' },
-                            response: {
-                                type: 'object',
-                                required: [
-                                    'authenticatorData',
-                                    'clientDataJSON',
-                                    'signature',
-                                    'userHandle'
-                                ],
-                                additionalProperties: false,
-                                properties: {
-                                    authenticatorData: byte_array(false),
-                                    clientDataJSON: { type: 'string' },
-                                    signature: byte_array(false),
-                                    userHandle: byte_array(true)
-                                }
-                            }
-                        }
-                    }
+                    assertion: exports.cred().post
                 }
             },
             response: options.response_schema
