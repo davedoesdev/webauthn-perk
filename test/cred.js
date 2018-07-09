@@ -163,6 +163,41 @@ async function auth(url, options) {
     }, url, options);
 }
 
+async function verify(url, options) {
+    options = Object.assign({
+        valid_status: 204
+    }, options);
+
+    await executeAsync(async (url, options) => {
+        const { cred_id, challenge } = (await axios(url)).data;
+
+        const assertion = await navigator.credentials.get({
+            publicKey: {
+                challenge: Uint8Array.from(challenge,
+                    x => options.modify_challenge ? x ^ 1 : x),
+                allowCredentials: [{
+                    id: Uint8Array.from(cred_id),
+                    type: 'public-key'
+                }]
+            }
+        });
+
+        const assertion_result = {
+            id: assertion.id,
+            response: {
+                authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
+                clientDataJSON: new TextDecoder('utf-8').decode(assertion.response.clientDataJSON),
+                signature: Array.from(new Uint8Array(assertion.response.signature)),
+                userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
+            }
+        };
+
+        await axios.post(url, assertion_result, {
+            validateStatus: status => status === options.valid_status
+        });
+    }, urls[0], options);
+}
+
 describe('credentials', function () {
     this.timeout(5 * 60 * 1000);
     browser.timeouts('script', 5 * 60 * 1000);
@@ -203,13 +238,20 @@ describe('credentials', function () {
 
         try {
             const [unused_attestation_result, unused_key_info, status] = await auth(urls[0], {
-                valid_status: 400,
-                expire_challenge: true
+                valid_status: 400
             });
             expect(status).to.equal(400);
         } finally {
             Date.now = orig_now;
         }
+    });
+
+    it('should return 400 when try to verify assertion with no public key', async function () {
+        await executeAsync(async url => {
+            await axios.post(url, undefined, {
+                validateStatus: status => status === 404
+            });
+        }, urls[0]);
     });
 
     let attestation_result, key_info;
@@ -310,31 +352,14 @@ describe('credentials', function () {
     });
 
     it('should verify assertion so client knows it successfully registered', async function () {
-        await executeAsync(async url => {
-            const { cred_id, challenge } = (await axios(url)).data;
+        await verify(urls[0]);
+    });
 
-            const assertion = await navigator.credentials.get({
-                publicKey: {
-                    challenge: Uint8Array.from(challenge),
-                    allowCredentials: [{
-                        id: Uint8Array.from(cred_id),
-                        type: 'public-key'
-                    }]
-                }
-            });
-
-            const assertion_result = {
-                id: assertion.id,
-                response: {
-                    authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
-                    clientDataJSON: new TextDecoder('utf-8').decode(assertion.response.clientDataJSON),
-                    signature: Array.from(new Uint8Array(assertion.response.signature)),
-                    userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
-                }
-            };
-
-            await axios.post(url, assertion_result);
-        }, urls[0]);
+    it('should return 400 when try to verify invalid assertion', async function () {
+        await verify(urls[0], {
+            modify_challenge: true,
+            valid_status: 400
+        });
     });
 
     it('should delete keys not in valid ID list', async function () {

@@ -107,15 +107,15 @@ module.exports = async function (fastify, options) {
         });
 
         fastify.post(`/${id}`, { schema: schemas.post }, async (request, reply) => {
-            check_time(request, 'assertionChallengeTime');
-            const assertion = fix_assertion_types(request.body);
-            const userHandle = assertion.response.userHandle;
             const { pub_key } = await get_pub_key_by_uri(id);
             if (pub_key === null) {
                 const err = new Error('no public key');
                 err.statusCode = 404;
                 throw err;
             }
+            check_time(request, 'assertionChallengeTime');
+            const assertion = fix_assertion_types(request.body);
+            const userHandle = assertion.response.userHandle;
             try {
                 await fido2lib.assertionResult(
                     assertion,
