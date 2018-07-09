@@ -127,7 +127,7 @@ module.exports = async function (fastify, options) {
                         factor: 'either',
                         prevCounter: 0,
                         // not all authenticators can store user handles
-                        userHandle: userHandle === undefined ? null : userHandle,
+                        userHandle: userHandle === undefined ? /* istanbul ignore next */ null : userHandle,
                         publicKey: pub_key.pub_key
                     }, fido2_options.assertion_expectations));
             } catch (ex) {

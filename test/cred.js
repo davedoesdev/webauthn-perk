@@ -443,8 +443,6 @@ describe('credentials', function () {
         expect(key_info2).not.to.eql(key_info);
     });
 
-    // test verify
-    //   include when malformed
     // add schemas for requests and responses + test invalid inc undefined assertion result (415)
     // check > 1 ID and that don't affect each other (use second key info to auth to first)
     // if CI is true, replay IO
