@@ -14,4 +14,4 @@ exports.fix_assertion_types = function (assertion) {
         BufferToArrayBuffer(Buffer.from(assertion.response.userHandle)) :
         /* istanbul ignore next */ undefined;
     return assertion;
-}
+};
