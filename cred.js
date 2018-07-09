@@ -67,12 +67,13 @@ module.exports = async function (fastify, options) {
                 return attestation_options;
             }
             const assertion_options = await fido2lib.assertionOptions(fido2_options.assertion_options);
-            request.session.set('assertionChallenge', assertion_options.challenge);
+            const challenge = Array.from(Buffer.from(assertion_options.challenge));
+            request.session.set('assertionChallenge', challenge);
             request.session.set('assertionChallengeTime', Date.now());
             return {
                 cred_id: pub_key.cred_id,
                 issuer_id,
-                challenge: assertion_options.challenge
+                challenge
             };
         });
 
@@ -105,7 +106,7 @@ module.exports = async function (fastify, options) {
             return { cred_id, issuer_id };
         });
 
-        fastify.post(`/${id}`, { schema: schemas.post }, async request => {
+        fastify.post(`/${id}`, { schema: schemas.post }, async (request, reply) => {
             check_time(request, 'assertionChallengeTime');
             const assertion = fix_assertion_types(request.body);
             const userHandle = assertion.response.userHandle;
@@ -127,12 +128,13 @@ module.exports = async function (fastify, options) {
                         prevCounter: 0,
                         // not all authenticators can store user handles
                         userHandle: userHandle === undefined ? null : userHandle,
-                        publicKey: pub_key 
+                        publicKey: pub_key.pub_key
                     }, fido2_options.assertion_expectations));
             } catch (ex) {
                 ex.statusCode = 400;
                 throw ex;
             }
+            reply.code(204);
         });
     }
 };

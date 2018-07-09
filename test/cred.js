@@ -119,7 +119,7 @@ async function executeAsync(f, ...args) {
         })();
     }, f.toString(), ...args)).value;
 
-    if (r.error) {
+    if (r && r.error) {
         throw new Error(r.error);
     }
 
@@ -267,20 +267,20 @@ describe('credentials', function () {
 
             const jwt = generateJWT(payload, expires);
 
-            const key_info = (await axios(cred_url)).data;
+            const { cred_id, issuer_id } = (await axios(cred_url)).data;
 
             const assertion = await navigator.credentials.get({
                 publicKey: {
                     challenge: new TextEncoder('utf-8').encode(jwt),
                     allowCredentials: [{
-                        id: Uint8Array.from(key_info.cred_id),
+                        id: Uint8Array.from(cred_id),
                         type: 'public-key'
                     }]
                 }
             });
 
             const assertion_result = {
-                issuer_id: key_info.issuer_id,
+                issuer_id,
                 assertion: {
                     id: assertion.id,
                     response: {
@@ -308,13 +308,35 @@ describe('credentials', function () {
         expect(data.payload.aud).to.equal(audience);
         expect(data.payload.foo).to.equal(90);
     });
-/*
+
     it('should verify assertion so client knows it successfully registered', async function () {
         await executeAsync(async url => {
-            const key_info = (await axios(url)).data;
+            const { cred_id, challenge } = (await axios(url)).data;
+
+            const assertion = await navigator.credentials.get({
+                publicKey: {
+                    challenge: Uint8Array.from(challenge),
+                    allowCredentials: [{
+                        id: Uint8Array.from(cred_id),
+                        type: 'public-key'
+                    }]
+                }
+            });
+
+            const assertion_result = {
+                id: assertion.id,
+                response: {
+                    authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
+                    clientDataJSON: new TextDecoder('utf-8').decode(assertion.response.clientDataJSON),
+                    signature: Array.from(new Uint8Array(assertion.response.signature)),
+                    userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
+                }
+            };
+
+            await axios.post(url, assertion_result);
         }, urls[0]);
     });
-*/
+
     it('should delete keys not in valid ID list', async function () {
         const dummy_fastify = {
             addHook() {},
@@ -396,8 +418,8 @@ describe('credentials', function () {
         expect(key_info2).not.to.eql(key_info);
     });
 
-    // add verify
-    // how are challenges (array buffers) serialized in session?
+    // test verify
+    //   include when malformed
     // add schemas for requests and responses + test invalid inc undefined assertion result (415)
     // check > 1 ID and that don't affect each other (use second key info to auth to first)
     // if CI is true, replay IO
