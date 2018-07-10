@@ -20,7 +20,7 @@ module.exports = fp(async function (fastify, options) {
     });
 
     const perk_options = Object.assign({
-        prefix: '/perk',
+        prefix: '/perk/',
         authz
     }, options.perk_options);
 
@@ -30,7 +30,7 @@ module.exports = fp(async function (fastify, options) {
     });
 
     fastify.register(require('./cred.js'), {
-        prefix: '/cred',
+        prefix: '/cred/',
         cred_options: Object.assign({
             keystore: authz.keystore
         }, options.cred_options)

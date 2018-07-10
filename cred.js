@@ -51,7 +51,7 @@ module.exports = async function (fastify, options) {
     for (const id of valid_ids) {
         fastify.log.info(`setting up routes for id: ${id}`);
 
-        fastify.get(`/${id}`, { schema: schemas.get }, async (request, reply) => {
+        fastify.get(`/${id}/`, { schema: schemas.get }, async (request, reply) => {
             const { pub_key, issuer_id } = await get_pub_key_by_uri(id);
             if (pub_key === null) {
                 reply.code(404);
@@ -77,7 +77,7 @@ module.exports = async function (fastify, options) {
             };
         });
 
-        fastify.put(`/${id}`, { schema: schemas.put }, async request => {
+        fastify.put(`/${id}/`, { schema: schemas.put }, async request => {
             check_time(request, 'attestationChallengeTime');
             const cred = request.body;
             cred.id = BufferToArrayBuffer(Buffer.from(cred.id, 'base64'));
@@ -106,7 +106,7 @@ module.exports = async function (fastify, options) {
             return { cred_id, issuer_id };
         });
 
-        fastify.post(`/${id}`, { schema: schemas.post }, async (request, reply) => {
+        fastify.post(`/${id}/`, { schema: schemas.post }, async (request, reply) => {
             const { pub_key } = await get_pub_key_by_uri(id);
             if (pub_key === null) {
                 const err = new Error('no public key');

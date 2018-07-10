@@ -17,7 +17,7 @@ before(async function () {
     for (let i = 0; i < 2; ++i) {
         const id = (await randomBytes(64)).toString('hex');
         valid_ids.push(id);
-        urls.push(`${origin}/cred/${id}`);
+        urls.push(`${origin}/cred/${id}/`);
     }
 
     fastify = require('fastify')({
@@ -136,6 +136,12 @@ async function auth(url, options) {
             validateStatus: status => status === 404
         });
 
+        if (options.interleave_get_url) {
+            await axios(options.interleave_get_url, {
+                validateStatus: status => status === 404
+            });
+        }
+
         const attestation_options = get_response.data;
         attestation_options.challenge = Uint8Array.from(attestation_options.challenge,
             x => options.modify_challenge ? x ^ 1 : x);
@@ -151,8 +157,8 @@ async function auth(url, options) {
             }
         };
 
-        if (options.expire_session) {
-            document.cookie = 'session=; Path=/cred/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        if (options.expire_session_path) {
+            document.cookie = `session=; Path=${options.expire_session_path}; Expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
         }
 
         const put_response = await axios.put(url, attestation_result, {
@@ -221,7 +227,7 @@ describe('credentials', function () {
     it('should return 400 for expired session', async function () {
         const [unused_attestation_result, unused_key_info, status] = await auth(urls[0], {
             valid_status: 400,
-            expire_session: true
+            expire_session_path: `/cred/${valid_ids[0]}/`
         });
         expect(status).to.equal(400);
     });
@@ -343,7 +349,7 @@ describe('credentials', function () {
             delete get_response.data.payload.jti; // binary string so causes terminal escapes when logged in test
 
             return [get_response.data, get_response.status];
-        }, urls[0], audience, `${origin}/perk`);
+        }, urls[0], audience, `${origin}/perk/`);
 
         expect(status).to.equal(200);
         expect(data.uri).to.equal(valid_ids[0]);
@@ -436,6 +442,14 @@ describe('credentials', function () {
                 validateStatus: status => status === 400
             })).status;
         }, urls[1], attestation_result)).to.equal(400);
+    });
+
+    it('should keep session per ID', async function () {
+        const [unused_attestation_result, key_info2] = await auth(urls[0], {
+            interleave_get_url: urls[1]
+        });
+        expect(key_info2).not.to.eql(key_info);
+        key_info = key_info2;
     });
 
     it('should return different key info for second URL', async function () {
