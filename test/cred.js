@@ -457,9 +457,17 @@ describe('credentials', function () {
         expect(key_info2).not.to.eql(key_info);
     });
 
-    // add schemas for requests and responses + test invalid inc undefined assertion result (415)
+    it('should check undefined assertion_result', async function () {
+        await executeAsync(async perk_url => {
+            await axios(perk_url, {
+                validateStatus: status => status === 400
+            });
+        }, `${origin}/perk/`);
+    });
+
     // check > 1 ID and that don't affect each other (use second key info to auth to first)
     // if CI is true, replay IO
     // fido2-lib - needs updating
     // should this be a separate module? e.g. webauthn-perk
+    //   open it and write docs?
 });
