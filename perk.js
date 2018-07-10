@@ -42,6 +42,13 @@ module.exports = async function (fastify, options) {
             assertion,
             request
         };
-        return await options.handler(await authorize(token), request);
+        let info;
+        try {
+            info = await authorize(token);
+        } catch (ex) {
+            ex.statusCode = 400;
+            throw ex;
+        }
+        return await options.handler(info, request);
     });
 };

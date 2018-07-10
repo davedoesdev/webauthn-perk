@@ -132,7 +132,7 @@ async function auth(url, options) {
     }, options);
 
     return await executeAsync(async (url, options) => {
-        const get_response = await axios(url, {
+        const get_response = await axios(options.challenge_url || url, {
             validateStatus: status => status === 404
         });
 
@@ -175,7 +175,11 @@ async function verify(url, options) {
     }, options);
 
     await executeAsync(async (url, options) => {
-        const { cred_id, challenge } = (await axios(url)).data;
+        let { cred_id, challenge } = (await axios(url)).data;
+
+        if (options.cred_url) {
+            ({ cred_id } = (await axios(options.cred_url)).data);
+        }
 
         const assertion = await navigator.credentials.get({
             publicKey: {
@@ -202,6 +206,85 @@ async function verify(url, options) {
             validateStatus: status => status === options.valid_status
         });
     }, urls[0], options);
+}
+
+async function perk(cred_url, options) {
+    options = Object.assign({
+        valid_status: 200
+    }, options);
+
+    return await executeAsync(async (cred_url, audience, perk_url, options) => {
+        function generateJWT(claims, expires) {
+            const header = { alg: 'none', typ: 'JWT' };
+            const new_claims = Object.assign({}, claims);
+            const now = new Date();
+            const jti = new Uint8Array(64);
+
+            window.crypto.getRandomValues(jti);
+
+            new_claims.jti = Array.from(jti).map(x => String.fromCharCode(x)).join('');
+            new_claims.iat = Math.floor(now.getTime() / 1000);
+            new_claims.nbf = Math.floor(now.getTime() / 1000);
+
+            if (expires) {
+                new_claims.exp = Math.floor(expires.getTime() / 1000);
+            }
+
+            return KJUR.jws.JWS.sign(null, header, new_claims);
+        }
+
+        const payload = {
+            aud: audience,
+            foo: 90
+        };
+
+        const expires = new Date();
+        expires.setSeconds(expires.getSeconds() + 10);
+
+        const jwt = generateJWT(payload, expires);
+
+        let { cred_id, issuer_id } = (await axios(cred_url)).data;
+
+        if (options.issuer_url) {
+            ({ issuer_id } = (await axios(options.issuer_url)).data);
+        }
+
+        const assertion = await navigator.credentials.get({
+            publicKey: {
+                challenge: new TextEncoder('utf-8').encode(jwt),
+                allowCredentials: [{
+                    id: Uint8Array.from(cred_id),
+                    type: 'public-key'
+                }]
+            }
+        });
+
+        const assertion_result = {
+            issuer_id,
+            assertion: {
+                id: assertion.id,
+                response: {
+                    authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
+                    clientDataJSON: new TextDecoder('utf-8').decode(assertion.response.clientDataJSON),
+                    signature: Array.from(new Uint8Array(assertion.response.signature)),
+                    userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
+                }
+            }
+        };
+
+        const get_response = await axios(perk_url, {
+            params: {
+                assertion_result: JSON.stringify(assertion_result)
+            },
+            validateStatus: status => status === options.valid_status
+        });
+
+        if (get_response.data.payload) {
+            delete get_response.data.payload.jti; // binary string so causes terminal escapes when logged in test
+        }
+
+        return [get_response.data, get_response.status];
+    }, cred_url, audience, `${origin}/perk/`, options);
 }
 
 describe('credentials', function () {
@@ -285,72 +368,7 @@ describe('credentials', function () {
     });
 
     it('should be able to use key info to sign assertion for authorize-jwt', async function () {
-        const [data, status ] = await executeAsync(async (cred_url, audience, perk_url) => {
-            function generateJWT(claims, expires) {
-                const header = { alg: 'none', typ: 'JWT' };
-                const new_claims = Object.assign({}, claims);
-                const now = new Date();
-                const jti = new Uint8Array(64);
-
-                window.crypto.getRandomValues(jti);
-
-                new_claims.jti = Array.from(jti).map(x => String.fromCharCode(x)).join('');
-                new_claims.iat = Math.floor(now.getTime() / 1000);
-                new_claims.nbf = Math.floor(now.getTime() / 1000);
-
-                if (expires) {
-                    new_claims.exp = Math.floor(expires.getTime() / 1000);
-                }
-
-                return KJUR.jws.JWS.sign(null, header, new_claims);
-            }
-
-            const payload = {
-                aud: audience,
-                foo: 90
-            };
-
-            const expires = new Date();
-            expires.setSeconds(expires.getSeconds() + 10);
-
-            const jwt = generateJWT(payload, expires);
-
-            const { cred_id, issuer_id } = (await axios(cred_url)).data;
-
-            const assertion = await navigator.credentials.get({
-                publicKey: {
-                    challenge: new TextEncoder('utf-8').encode(jwt),
-                    allowCredentials: [{
-                        id: Uint8Array.from(cred_id),
-                        type: 'public-key'
-                    }]
-                }
-            });
-
-            const assertion_result = {
-                issuer_id,
-                assertion: {
-                    id: assertion.id,
-                    response: {
-                        authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
-                        clientDataJSON: new TextDecoder('utf-8').decode(assertion.response.clientDataJSON),
-                        signature: Array.from(new Uint8Array(assertion.response.signature)),
-                        userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
-                    }
-                }
-            };
-
-            const get_response = await axios(perk_url, {
-                params: {
-                    assertion_result: JSON.stringify(assertion_result)
-                }
-            });
-
-            delete get_response.data.payload.jti; // binary string so causes terminal escapes when logged in test
-
-            return [get_response.data, get_response.status];
-        }, urls[0], audience, `${origin}/perk/`);
-
+        const [ data, status ] = await perk(urls[0]);
         expect(status).to.equal(200);
         expect(data.uri).to.equal(valid_ids[0]);
         expect(data.payload.aud).to.equal(audience);
@@ -444,6 +462,13 @@ describe('credentials', function () {
         }, urls[1], attestation_result)).to.equal(400);
     });
 
+    it('should fail to use challenge from different ID', async function () {
+        await auth(urls[0], {
+            challenge_url: urls[1],
+            valid_status: 400
+        });
+    });
+
     it('should keep session per ID', async function () {
         const [unused_attestation_result, key_info2] = await auth(urls[0], {
             interleave_get_url: urls[1]
@@ -457,6 +482,22 @@ describe('credentials', function () {
         expect(key_info2).not.to.eql(key_info);
     });
 
+    it('should fail to use issuer ID from second URL', async function () {
+        const [ data, status ] = await perk(urls[0], {
+            issuer_url: urls[1],
+            valid_status: 400
+        });
+        expect(status).to.equal(400);
+        expect(data.message).to.equal('signature validation failed');
+    });
+
+    it('should fail to use cred ID from second URL', async function () {
+        await verify(urls[0], {
+            cred_url: urls[1],
+            valid_status: 400
+        });
+    });
+
     it('should check undefined assertion_result', async function () {
         await executeAsync(async perk_url => {
             await axios(perk_url, {
@@ -465,7 +506,6 @@ describe('credentials', function () {
         }, `${origin}/perk/`);
     });
 
-    // check > 1 ID and that don't affect each other (use second key info to auth to first)
     // if CI is true, replay IO
     // fido2-lib - needs updating
     // should this be a separate module? e.g. webauthn-perk
