@@ -16,7 +16,7 @@
     "url": "https://gitlab.com/davedoesdev/conferkit/issues"
   },
   "private": true,
-  "main": "server.js",
+  "main": "plugin.js",
   "scripts": {
     "install": "secure-session-gen-key > secret-session-key"
   },

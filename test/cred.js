@@ -28,7 +28,7 @@ before(async function () {
         }
     });
 
-    fastify.register(require('../backend.js'), {
+    fastify.register(require('..'), {
         authorize_jwt_options: {
             db_dir: path.join(__dirname, 'store'),
         },
@@ -400,7 +400,7 @@ describe('credentials', function () {
         };
 
         // first check we don't delete valid ID
-        await require('../backend.js')(dummy_fastify, {
+        await require('..')(dummy_fastify, {
             authorize_jwt_options: {
                 db_dir: path.join(__dirname, 'store'),
             },
@@ -416,7 +416,7 @@ describe('credentials', function () {
         expect(key_info2).to.eql(key_info);
 
         // then check we delete invalid IDs
-        await require('../backend.js')(dummy_fastify, {
+        await require('..')(dummy_fastify, {
             authorize_jwt_options: {
                 db_dir: path.join(__dirname, 'store'),
             },
