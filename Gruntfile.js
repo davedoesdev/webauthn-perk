@@ -40,15 +40,13 @@ module.exports = function (grunt) {
 
     grunt.registerTask('lint', 'eslint');
 
-    grunt.registerTask('test-cred',
-        process.env.CI === 'true' ?
-            'mochaTest:cred' : [
-                'force:exec:test_cred',
-                // work around https://github.com/webdriverio/wdio-selenium-standalone-service/issues/28
-                // (https://github.com/vvo/selenium-standalone/issues/351)
-                'exec:wdio_cleanup',
-                'exit_with_test_cred_status'
-            ]);
+    grunt.registerTask('test-cred', [
+        'force:exec:test_cred',
+        // work around https://github.com/webdriverio/wdio-selenium-standalone-service/issues/28
+        // (https://github.com/vvo/selenium-standalone/issues/351)
+        'exec:wdio_cleanup',
+        'exit_with_test_cred_status'
+    ]);
     grunt.registerTask('test', 'test-cred');
 
     grunt.registerTask('coverage', [

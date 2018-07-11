@@ -506,8 +506,8 @@ describe('credentials', function () {
         }, `${origin}/perk/`);
     });
 
-    // if CI is true, replay IO
-    // fido2-lib - needs updating
+    // rename backend.js to plugin.js
     // should this be a separate module? e.g. webauthn-perk
     //   open it and write docs?
+    // backup
 });
