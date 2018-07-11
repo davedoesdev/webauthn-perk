@@ -8,7 +8,7 @@ const { expect } = require('chai');
 const randomBytes = promisify(require('crypto').randomBytes);
 const port = 3000;
 const origin = `https://localhost:${port}`;
-const audience = 'urn:conferkit:cred-test';
+const audience = 'urn:webauthn-perk:test';
 const valid_ids = [];
 const urls = [];
 let fastify;
@@ -506,7 +506,7 @@ describe('credentials', function () {
         }, `${origin}/perk/`);
     });
 
-    // should this be a separate module? e.g. webauthn-perk
-    //   open it and write docs?
+    // soft token needs different istanbul ignores
+    // open it and write docs?
     // backup
 });

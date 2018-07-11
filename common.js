@@ -11,7 +11,7 @@ exports.fix_assertion_types = function (assertion) {
     assertion.response.clientDataJSON = BufferToArrayBuffer(Buffer.from(assertion.response.clientDataJSON));
     assertion.response.signature = BufferToArrayBuffer(Buffer.from(assertion.response.signature));
     assertion.response.userHandle = assertion.response.userHandle ?
-        BufferToArrayBuffer(Buffer.from(assertion.response.userHandle)) :
-        /* istanbul ignore next */ undefined;
+        /* istanbul ignore next */ BufferToArrayBuffer(Buffer.from(assertion.response.userHandle)) :
+        undefined;
     return assertion;
 };

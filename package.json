@@ -1,8 +1,8 @@
 {
-  "name": "conferkit",
-  "description": "Easy video conferencing",
+  "name": "webauthn-perk",
+  "description": "Claims-based Web Authentication",
   "version": "0.0.1",
-  "homepage": "https://gitlab.com/davedoesdev/conferkit",
+  "homepage": "https://gitlab.com/davedoesdev/webauthn-perk",
   "author": {
     "name": "David Halls",
     "email": "dave@davedoesdev.com",
@@ -10,10 +10,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://gitlab.com/davedoesdev/conferkit.git"
+    "url": "https://gitlab.com/davedoesdev/webauthn-perk.git"
   },
   "bugs": {
-    "url": "https://gitlab.com/davedoesdev/conferkit/issues"
+    "url": "https://gitlab.com/davedoesdev/webauthn-perk/issues"
   },
   "private": true,
   "main": "plugin.js",
