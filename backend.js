@@ -1,9 +1,8 @@
 /*eslint-env node */
-const fp = require('fastify-plugin');
 const { promisify } = require('util');
 const authorize_jwt = promisify(require('authorize-jwt'));
 
-module.exports = fp(async function (fastify, options) {
+module.exports = async function (fastify, options) {
     options = options.backend_options || options;
 
     const authz = await authorize_jwt(Object.assign({
@@ -35,4 +34,4 @@ module.exports = fp(async function (fastify, options) {
             keystore: authz.keystore
         }, options.cred_options)
     });
-});
+};

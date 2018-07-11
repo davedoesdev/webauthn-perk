@@ -506,7 +506,6 @@ describe('credentials', function () {
         }, `${origin}/perk/`);
     });
 
-    // rename backend.js to plugin.js
     // should this be a separate module? e.g. webauthn-perk
     //   open it and write docs?
     // backup
