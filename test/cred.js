@@ -506,7 +506,6 @@ describe('credentials', function () {
         }, `${origin}/perk/`);
     });
 
-    // soft token needs different istanbul ignores
     // open it and write docs?
     // backup
 });

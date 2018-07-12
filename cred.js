@@ -115,7 +115,10 @@ module.exports = async function (fastify, options) {
             }
             check_time(request, 'assertionChallengeTime');
             const assertion = fix_assertion_types(request.body);
-            const userHandle = assertion.response.userHandle;
+            const userHandle = Object.assign({
+                // not all authenticators can store user handles
+                userHandle: null
+            }, assertion.response).userHandle;
             try {
                 await fido2lib.assertionResult(
                     assertion,
@@ -126,8 +129,7 @@ module.exports = async function (fastify, options) {
                         challenge: request.session.get('assertionChallenge'),
                         factor: 'either',
                         prevCounter: 0,
-                        // not all authenticators can store user handles
-                        userHandle: userHandle === undefined ? null : /* istanbul ignore next */ userHandle,
+                        userHandle: userHandle,
                         publicKey: pub_key.pub_key
                     }, fido2_options.assertion_expectations));
             } catch (ex) {

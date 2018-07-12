@@ -10,8 +10,11 @@ exports.fix_assertion_types = function (assertion) {
     assertion.response.authenticatorData = BufferToArrayBuffer(Buffer.from(assertion.response.authenticatorData));
     assertion.response.clientDataJSON = BufferToArrayBuffer(Buffer.from(assertion.response.clientDataJSON));
     assertion.response.signature = BufferToArrayBuffer(Buffer.from(assertion.response.signature));
-    assertion.response.userHandle = assertion.response.userHandle ?
-        /* istanbul ignore next */ BufferToArrayBuffer(Buffer.from(assertion.response.userHandle)) :
-        undefined;
+    /* istanbul ignore if */
+    if (assertion.response.userHandle) {
+        assertion.response.userHandle = BufferToArrayBuffer(Buffer.from(assertion.response.userHandle));
+    } else {
+        delete assertion.response.userHandle;
+    }
     return assertion;
 };

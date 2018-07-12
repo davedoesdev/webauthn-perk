@@ -28,10 +28,13 @@ module.exports = async function (fastify, options) {
         perk_options: perk_options
     });
 
-    fastify.register(require('./cred.js'), {
+    const cred_options = Object.assign({
         prefix: '/cred/',
-        cred_options: Object.assign({
-            keystore: authz.keystore
-        }, options.cred_options)
+        keystore: authz.keystore
+    }, options.cred_options);
+
+    fastify.register(require('./cred.js'), {
+        prefix: cred_options.prefix,
+        cred_options: cred_options
     });
 };
