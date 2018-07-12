@@ -9,9 +9,8 @@ before_script:
   - wget -O - 'https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-GB' | tar -xjC /opt
   - ln -s /opt/firefox/firefox /usr/local/bin
   - firefox --version
-  - service xvfb start
 
 ci:
   script:
     - npm install
-    - npm run ci
+    - xvfb-run npm run ci
