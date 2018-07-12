@@ -1,11 +1,15 @@
 image: node:10.6.0-stretch
 
+variables:
+  DISPLAY: ":99.0"
+
 before_script:
-  - apt-get update -qq && apt-get install -y -qq default-jre libdbus-glib-1-2
+  - apt-get update -qq && apt-get install -y -qq default-jre libdbus-glib-1-2 xvfb
   - java -version
   - wget -O - 'https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-GB' | tar -xjC /opt
   - ln -s /opt/firefox/firefox /usr/local/bin
   - firefox --version
+  - xvfb start
 
 ci:
   script:
