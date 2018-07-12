@@ -1,8 +1,11 @@
 image: node:10.6.0-stretch
 
 before_script:
-  - apt-get update -qq && apt-get install -y -qq default-jre firefox
+  - apt-get update -qq && apt-get install -y -qq default-jre
   - java -version
+  - wget -O - 'https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-GB' | tar -xjC /opt
+  - ln -s /opt/firefox/firefox /usr/local/bin
+  - firefox --version
 
 ci:
   script:
