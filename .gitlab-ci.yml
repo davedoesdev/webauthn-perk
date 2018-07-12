@@ -1,17 +1,13 @@
 image: node:10.6.0-stretch
 
-variables:
-  DISPLAY: ":99.0"
-
 before_script:
   - apt-get update -qq && apt-get install -y -qq default-jre libdbus-glib-1-2 xvfb
   - java -version
   - wget -O - 'https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-GB' | tar -xjC /opt
   - ln -s /opt/firefox/firefox /usr/local/bin
   - firefox --version
-  - echo $CI
 
 ci:
   script:
     - npm install
-    - xvfb-run npm run ci
+    - xvfb-run -s '-screen 0 1024x768x24' npm run ci
