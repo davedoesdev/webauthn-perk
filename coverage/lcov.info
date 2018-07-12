@@ -240,13 +240,3 @@ BRDA:27,1,1,2
 BRF:4
 BRH:4
 end_of_record
-TN:
-SF:/home/david/webauthn-perk/wdio.conf.js
-FNF:0
-FNH:0
-DA:2,2
-LF:1
-LH:1
-BRF:0
-BRH:0
-end_of_record
