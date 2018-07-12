@@ -9,7 +9,7 @@ before_script:
   - wget -O - 'https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-GB' | tar -xjC /opt
   - ln -s /opt/firefox/firefox /usr/local/bin
   - firefox --version
-  - xvfb start
+  - /etc/init.d/xvfb start
 
 ci:
   script:
