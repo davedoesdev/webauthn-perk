@@ -18,7 +18,8 @@
   "private": true,
   "main": "plugin.js",
   "scripts": {
-    "install": "secure-session-gen-key > secret-session-key"
+    "test": "grunt test",
+    "ci": "grunt lint coverage"
   },
   "directories": {
     "test": "test"
@@ -42,7 +43,6 @@
     "grunt-eslint": "^21.0.0",
     "grunt-exec": "^3.0.0",
     "grunt-force-task": "^2.0.0",
-    "grunt-mocha-test": "^0.13.3",
     "jsrsasign": "^8.0.12",
     "mocha": "^5.2.0",
     "nyc": "^12.0.2",
@@ -51,5 +51,8 @@
     "wdio-selenium-standalone-service": "0.0.10",
     "wdio-spec-reporter": "^0.1.4",
     "webdriverio": "^4.13.1"
+  },
+  "engines": {
+    "node": ">= 10"
   }
 }

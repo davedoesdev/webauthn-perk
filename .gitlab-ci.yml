@@ -1,0 +1,5 @@
+image: node:10.6.0
+
+ci:
+  script:
+    - npm run ci
