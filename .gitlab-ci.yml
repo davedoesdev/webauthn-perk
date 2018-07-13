@@ -4,7 +4,7 @@ variables:
   DEBIAN_FRONTEND: noninteractive
 
 before_script:
-  - apt-get update -qq && apt-get install -y -qq default-jre libdbus-glib-1-2 xvfb mutter
+  - apt-get update -qq && apt-get install -y -qq default-jre libdbus-glib-1-2 xvfb fvwm
   - java -version
   - wget -O - 'https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-GB' | tar -xjC /opt
   - ln -s /opt/firefox/firefox /usr/local/bin
@@ -13,6 +13,4 @@ before_script:
 ci:
   script:
     - npm install
-    - mutter --version
-    - xvfb-run bash -c 'echo $DISPLAY'
-    - xvfb-run bash -c 'mutter& npm run ci'
+    - xvfb-run bash -c 'fvwm& npm run ci'
