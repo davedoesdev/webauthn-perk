@@ -11,3 +11,4 @@ ci:
   script:
     - npm install
     - "xvfb-run bash -c 'npm ci'"
+    - echo done
