@@ -10,4 +10,4 @@ before_script:
 ci:
   script:
     - npm install
-    - xvfb-run -s '-screen 0 1024x768x24' npm run ci
+    - CI=true xvfb-run bash -c 'mutter& npm ci'
