@@ -506,6 +506,7 @@ describe('credentials', function () {
         }, `${origin}/perk/`);
     });
 
-    // open it and write docs?
     // backup
+    // docs
+    // open it?
 });
