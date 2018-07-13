@@ -13,5 +13,6 @@ before_script:
 ci:
   script:
     - npm install
+    - mutter --version
     - xvfb-run bash -c 'echo $DISPLAY'
     - xvfb-run bash -c 'mutter& npm run ci'
