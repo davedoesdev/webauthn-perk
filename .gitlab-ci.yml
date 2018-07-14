@@ -14,3 +14,4 @@ ci:
   script:
     - npm install
     - xvfb-run bash -c 'fvwm& npm run ci'
+  coverage: '/^All files[^\d]*(\d+[.\d]*)/'
