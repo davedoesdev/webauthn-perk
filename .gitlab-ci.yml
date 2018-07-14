@@ -16,5 +16,6 @@ ci:
     - xvfb-run bash -c 'fvwm& npm run ci'
   coverage: '/^All files[^\d]*(\d+[.\d]*)/'
   artifacts:
+    name: coverage
     paths:
       - coverage/
