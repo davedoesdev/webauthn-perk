@@ -27,8 +27,9 @@
     "test": "test"
   },
   "keywords": [
-    "video",
-    "conferencing"
+    "webauthn",
+    "perk",
+    "fastify"
   ],
   "dependencies": {
     "authorize-jwt": "^5.3.3",
