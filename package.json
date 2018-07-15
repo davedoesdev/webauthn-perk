@@ -1,5 +1,5 @@
 {
-  "name": "webauthn-perk",
+  "name": "@davedoesdev/webauthn-perk",
   "description": "Claims-based Web Authentication",
   "version": "0.0.1",
   "homepage": "https://gitlab.com/davedoesdev/webauthn-perk",
@@ -15,7 +15,9 @@
   "bugs": {
     "url": "https://gitlab.com/davedoesdev/webauthn-perk/issues"
   },
-  "private": true,
+  "publishConfig": {
+    "registry": "http://localhost:4873"
+  },
   "main": "plugin.js",
   "scripts": {
     "test": "grunt test",
