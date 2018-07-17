@@ -1,6 +1,6 @@
 = webauthn-perk {nbsp}{nbsp}{nbsp} image:https://gitlab.com/davedoesdev/webauthn-perk/badges/master/pipeline.svg[pipeline status,link=https://gitlab.com/davedoesdev/webauthn-perk/pipelines] image:https://gitlab.com/davedoesdev/webauthn-perk/badges/master/coverage.svg[coverage report,link="https://gitlab.com/davedoesdev/webauthn-perk/builds/artifacts/master/download?job=ci"] image:http://localhost:4874/npm/v/@davedoesdev/webauthn-perk.svg?registry_uri=http://localhost:4873[NPM version,link=http://localhost:4873/#/detail/@davedoesdev/webauthn-perk]
 
-Fastify plugin for supporting the https://www.w3.org/TR/webauthn/[Web Authentication]
+https://www.fastify.io/[Fastify] plugin for supporting the https://www.w3.org/TR/webauthn/[Web Authentication]
 Perk pattern (thanks to https://github.com/emlun[Emil Lundberg] for https://github.com/w3c/webauthn/issues/902#issuecomment-388223929[rephrasing] my original description):
 
 1. Alice (an admin) chooses an unguessable ID.
@@ -17,3 +17,24 @@ Perk pattern (thanks to https://github.com/emlun[Emil Lundberg] for https://gith
 12. Bob presents the assertion to Alice's server.
 13. Alice's server verifies the assertion using Alice's public key.
 14. Bob receives a perk, i.e. Alice's Web server provides some service to Bob.
+
+== Registering
+
+Register `webauthn-perk` with Fastify as normal. The available options and their defaults are described below:
+
+[source,javascript]
+----
+fastify.register(require('webauthn-perk'), {
+    webauthn_perk_options: {
+        authorize_jwt_options: {
+
+        },
+        cred_options: {
+
+        },
+        perk_options: {
+
+        }
+    }
+});
+----

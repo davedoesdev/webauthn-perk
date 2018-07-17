@@ -3,13 +3,13 @@ const { promisify } = require('util');
 const authorize_jwt = promisify(require('authorize-jwt'));
 
 module.exports = async function (fastify, options) {
-    options = options.backend_options || options;
+    options = options.webauthn_perk_options || options;
 
     const authz = await authorize_jwt(Object.assign({
         db_type: 'pouchdb',
         db_for_update: true,
         no_updates: true,
-        WEBAUTHN_MODE: true,
+        WEBAUTHN_MODE: true
     }, options.authorize_jwt_options));
 
     fastify.addHook('onClose', async function () {
