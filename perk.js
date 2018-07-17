@@ -28,7 +28,7 @@ module.exports = async function (fastify, options) {
         reply.send(post_response.payload);
     });
 
-    fastify.post('/', { schema: schemas.post }, async request => {
+    fastify.post('/', { schema: schemas.post }, async (request, reply) => {
         const assertion = fix_assertion_types(request.body.assertion);
         // complete_webauthn_token passed to authorize-jwt can override these
         const token = {
@@ -49,6 +49,6 @@ module.exports = async function (fastify, options) {
             ex.statusCode = 400;
             throw ex;
         }
-        return await options.handler(info, request);
+        return await options.handler(info, request, reply);
     });
 };

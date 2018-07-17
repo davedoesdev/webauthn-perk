@@ -1,4 +1,5 @@
 = webauthn-perk {nbsp}{nbsp}{nbsp} image:https://gitlab.com/davedoesdev/webauthn-perk/badges/master/pipeline.svg[pipeline status,link=https://gitlab.com/davedoesdev/webauthn-perk/pipelines] image:https://gitlab.com/davedoesdev/webauthn-perk/badges/master/coverage.svg[coverage report,link="https://gitlab.com/davedoesdev/webauthn-perk/builds/artifacts/master/download?job=ci"] image:http://localhost:4874/npm/v/@davedoesdev/webauthn-perk.svg?registry_uri=http://localhost:4873[NPM version,link=http://localhost:4873/#/detail/@davedoesdev/webauthn-perk]
+:prewrap!:
 
 https://www.fastify.io/[Fastify] plugin for supporting the https://www.w3.org/TR/webauthn/[Web Authentication]
 Perk pattern (thanks to https://github.com/emlun[Emil Lundberg] for https://github.com/w3c/webauthn/issues/902#issuecomment-388223929[rephrasing] my original description):
@@ -20,20 +21,75 @@ Perk pattern (thanks to https://github.com/emlun[Emil Lundberg] for https://gith
 
 == Registering
 
-Register `webauthn-perk` with Fastify as normal. The available options and their defaults are described below:
+Register `webauthn-perk` with Fastify as normal. The available options and their defaults are described below.
 
 [source,javascript]
 ----
 fastify.register(require('webauthn-perk'), {
     webauthn_perk_options: {
         authorize_jwt_options: {
-
+            // You should override db_dir
+            db_dir: 'node_modules/pub-keystore/pouchdb/store/pub-keys',
+            db_type: 'pouchdb',
+            db_for_update: true,
+            no_updates: true,
+            WEBAUTHN_MODE: true
+            // See https://github.com/davedoesdev/authorize-jwt for more options
         },
         cred_options: {
-
+            valid_ids: [], // List of unguessable IDs (strings)
+            prefix: '/cred', // Unguessable IDs are prefixed with this plus /
+            challenge_timeout: 60000, // Server challenges expire after this (ms)
+            fido2_options: {
+                user: {
+                    // You can override these but they'll only be used if your
+                    // authenticator supports storing user handles
+                    name: 'Anonymous User',
+                    displayName: 'Anonymous User',
+                    id: 'Anonymous User'
+                },
+                new_options: {
+                    // See https://apowers313.github.io/fido2-lib/Fido2Lib.html
+                },
+                attestation_options: {
+                    // See https://apowers313.github.io/fido2-lib/Fido2Lib.html#attestationOptions
+                },
+                assertion_options: {
+                    // See https://apowers313.github.io/fido2-lib/Fido2Lib.html#assertionOptions
+                },
+                attestation_expectations: {
+                    origin: `https://${request.headers.host}`,
+                    factor: 'either'
+                    // See https://apowers313.github.io/fido2-lib/Fido2Lib.html#attestationResult
+                },
+                assertion_expectations: {
+                    origin: `https://${request.headers.host}`,
+                    factor: 'either',
+                    prevCounter: 0
+                    // See https://apowers313.github.io/fido2-lib/Fido2Lib.html#assertionResult
+                }
+            },
+            secure_session_options: {
+                // See https://github.com/mcollina/fastify-secure-session
+            }
         },
         perk_options: {
-
+            prefix: '/perk', // Well-known path for presenting assertions is this plus /
+            handler: function (info, request, reply) {
+                // This function is called after an assertion is successfully verified.
+                // You must override this or perk requests will fail.
+                // request and reply are standard Fastify objects and your function
+                // is treated as a standard route handler.
+                // info contains payload, uri, rev and assertion_result properties
+                // as described for the cb parameter here:
+                // https://github.com/davedoesdev/authorize-jwt#authorizejwtprototypeauthorizeauthz_token-allowed_algs-cb
+            }
+            // TODO:
+            // perk be able to override these options
+            // expected_origin: `https://${request.headers.host}`,
+            // expected_factor: 'either',
+            // prev_counter: 0
+            // POST to cred/id should also call complete_webauthn_token
         }
     }
 });
