@@ -1,3 +1,19 @@
 = webauthn-perk {nbsp}{nbsp}{nbsp} image:https://gitlab.com/davedoesdev/webauthn-perk/badges/master/pipeline.svg[pipeline status,link=https://gitlab.com/davedoesdev/webauthn-perk/pipelines] image:https://gitlab.com/davedoesdev/webauthn-perk/badges/master/coverage.svg[coverage report,link="https://gitlab.com/davedoesdev/webauthn-perk/builds/artifacts/master/download?job=ci"] image:http://localhost:4874/npm/v/@davedoesdev/webauthn-perk.svg?registry_uri=http://localhost:4873[NPM version,link=http://localhost:4873/#/detail/@davedoesdev/webauthn-perk]
 
-Fastify plugin for supporting the Web Authentication Perk pattern.
+Fastify plugin for supporting the https://www.w3.org/TR/webauthn/[Web Authentication]
+Perk pattern (thanks to https://github.com/emlun[Emil Lundberg] for https://github.com/w3c/webauthn/issues/902#issuecomment-388223929[rephrasing] my original description):
+
+1. Alice (an admin) chooses an unguessable ID.
+2. Alice configures `webauthn-perk` on her Web server with the ID.
+3. Alice uses her Web browser to visit a URL on her Web server which contains the ID.
+4. Alice uses the Web Authentication API to sign a challenge generated on her server.
+5. The signature and Alice's public key are sent to her server.
+6. Alice's server verfies the signature.
+7. Alice's server associates her public key with the ID.
+8. Alice uses client-side script to generate an unsigned JWT containing claims of her choosing.
+9. Alice uses the Web Authentication API to generate a signed assertion, with the unsigned JWT as the challenge.
+10. Alice sends the assertion to ordinary user Bob (by some means).
+11. Bob uses his Web browser to visit a well-known URL on Alice's Web server.
+12. Bob presents the assertion to Alice's server.
+13. Alice's server verifies the assertion using Alice's public key.
+14. Bob receives a perk, i.e. Alice's Web server provides some service to Bob.
