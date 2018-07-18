@@ -11,16 +11,19 @@ const origin = `https://localhost:${port}`;
 const audience = 'urn:webauthn-perk:test';
 const valid_ids = [];
 const urls = [];
-let fastify;
 
-before(async function () {
-    for (let i = 0; i < 2; ++i) {
-        const id = (await randomBytes(64)).toString('hex');
-        valid_ids.push(id);
-        urls.push(`${origin}/cred/${id}/`);
-    }
+async function make_fastify(port, options) {
+    options = Object.assign({
+        valid_ids,
+        async handler (info) {
+            return {
+                uri: info.uri,
+                payload: info.payload
+            };
+        }
+    }, options);
 
-    fastify = require('fastify')({
+    const fastify = require('fastify')({
         logger: true,
         https: {
             key: await readFile(path.join(__dirname, 'keys', 'server.key')),
@@ -28,19 +31,21 @@ before(async function () {
         }
     });
 
-    fastify.register(require('..'), {
+    const plugin_options = {
         authorize_jwt_options: {
             db_dir: path.join(__dirname, 'store'),
+            complete_webauthn_token: options.complete_webauthn_token
         },
         cred_options: {
-            valid_ids: valid_ids,
+            valid_ids: options.valid_ids,
             secure_session_options: {
                 key: await readFile(path.join(__dirname, 'secret-session-key'))
             },
             fido2_options: {
                 new_options: {
                     attestation: 'none'
-                }
+                },
+                complete_assertion_expectations: options.complete_assertion_expectations
             }
         },
         perk_options: {
@@ -82,14 +87,19 @@ before(async function () {
                     }
                 }
             },
-            handler: async info => {
-                return {
-                    uri: info.uri,
-                    payload: info.payload
-                };
-            }
+            handler: options.handler
         }
-    });
+    };
+
+    if (plugin_options.cred_options.fido2_options.complete_assertion_expectations === undefined) {
+        delete plugin_options.cred_options.fido2_options.complete_assertion_expectations;
+    }
+
+    if (plugin_options.perk_options.handler === undefined) {
+        delete plugin_options.perk_options.handler;
+    }
+
+    fastify.register(require('..'), plugin_options);
 
     fastify.register(require('fastify-static'), {
         root: path.join(__dirname, 'fixtures'),
@@ -103,6 +113,20 @@ before(async function () {
             await fastify.close();
         })();
     });
+
+    return fastify;
+}
+
+let fastify;
+
+before(async function () {
+    for (let i = 0; i < 2; ++i) {
+        const id = (await randomBytes(64)).toString('hex');
+        valid_ids.push(id);
+        urls.push(`${origin}/cred/${id}/`);
+    }
+
+    fastify = await make_fastify(port);
 
     await browser.url(`${origin}/test/cred.html`);
 });
@@ -205,10 +229,10 @@ async function verify(url, options) {
         await axios.post(url, assertion_result, {
             validateStatus: status => status === options.valid_status
         });
-    }, urls[0], options);
+    }, url, options);
 }
 
-async function perk(cred_url, options) {
+async function perk(cred_url, perk_origin, options) {
     options = Object.assign({
         valid_status: 200
     }, options);
@@ -284,7 +308,7 @@ async function perk(cred_url, options) {
         }
 
         return [get_response.data, get_response.status];
-    }, cred_url, audience, `${origin}/perk/`, options);
+    }, cred_url, audience, `${perk_origin}/perk/`, options);
 }
 
 describe('credentials', function () {
@@ -368,7 +392,7 @@ describe('credentials', function () {
     });
 
     it('should be able to use key info to sign assertion for authorize-jwt', async function () {
-        const [ data, status ] = await perk(urls[0]);
+        const [ data, status ] = await perk(urls[0], origin);
         expect(status).to.equal(200);
         expect(data.uri).to.equal(valid_ids[0]);
         expect(data.payload.aud).to.equal(audience);
@@ -483,7 +507,7 @@ describe('credentials', function () {
     });
 
     it('should fail to use issuer ID from second URL', async function () {
-        const [ data, status ] = await perk(urls[0], {
+        const [ data, status ] = await perk(urls[0], origin, {
             issuer_url: urls[1],
             valid_status: 400
         });
@@ -504,6 +528,69 @@ describe('credentials', function () {
                 validateStatus: status => status === 400
             });
         }, `${origin}/perk/`);
+    });
+
+    it('should throw missing handler error', async function () {
+        const port2 = port + 1;
+        const id2 = (await randomBytes(64)).toString('hex');
+        await make_fastify(port2, {
+            valid_ids: [id2],
+            handler: undefined
+        });
+        const origin2 = `https://localhost:${port2}`;
+        const cred_url2 = `${origin2}/cred/${id2}/`;
+
+        await browser.url(`${origin2}/test/cred.html`);
+        await auth(cred_url2);
+        const [data, status] = await perk(cred_url2, origin2, { valid_status: 500 });
+        expect(data.message).to.equal('missing handler');
+        expect(status).to.equal(500);
+    });
+
+    it('should call complete_webauthn_token', async function () {
+        let called = false;
+        function complete_webauthn_token(token, cb) {
+            called = true;
+            cb(null, token);
+        }
+
+        const port3 = port + 2;
+        const id3 = (await randomBytes(64)).toString('hex');
+        await make_fastify(port3, {
+            valid_ids: [id3],
+            complete_webauthn_token
+        });
+        const origin3 = `https://localhost:${port3}`;
+        const cred_url3 = `${origin3}/cred/${id3}/`;
+
+        await browser.url(`${origin3}/test/cred.html`);
+        await auth(cred_url3);
+        await perk(cred_url3, origin3);
+
+        expect(called).to.be.true;
+    });
+
+    it('should call complete_assertion_expectations', async function () {
+        let called = false;
+        async function complete_assertion_expectations(assertion, assertion_expectations) {
+            called = true;
+            return assertion_expectations;
+        }
+
+        const port4 = port + 3;
+        const id4 = (await randomBytes(64)).toString('hex');
+        await make_fastify(port4, {
+            valid_ids: [id4],
+            complete_assertion_expectations
+        });
+        const origin4 = `https://localhost:${port4}`;
+        const cred_url4 = `${origin4}/cred/${id4}/`;
+
+        await browser.url(`${origin4}/test/cred.html`);
+        await auth(cred_url4);
+        await verify(cred_url4);
+
+        expect(called).to.be.true;
     });
 
     // docs

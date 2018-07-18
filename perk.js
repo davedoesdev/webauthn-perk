@@ -12,6 +12,12 @@ module.exports = async function (fastify, options) {
         });
     });
 
+    const handler = Object.assign({
+        async handler() {
+            throw new Error('missing handler');
+        }
+    }, options).handler;
+
     const schemas = require('./schemas.js').perk(options);
 
     fastify.get('/', { schema: schemas.get }, async (request, reply) => {
@@ -31,16 +37,22 @@ module.exports = async function (fastify, options) {
     fastify.post('/', { schema: schemas.post }, async (request, reply) => {
         const assertion = fix_assertion_types(request.body.assertion);
         // complete_webauthn_token passed to authorize-jwt can override these
+        const expectations = Object.assign({
+            // fido2-lib expects https
+            origin: `https://${request.headers.host}`,
+            factor: 'either',
+            prevCounter: 0,
+            // not all authenticators can store user handles
+            userHandle: assertion.response.userHandle
+        }, options.assertion_expectations);
         const token = {
             issuer_id: request.body.issuer_id,
-            // fido2-lib expects https
-            expected_origin: `https://${request.headers.host}`,
-            expected_factor: 'either',
-            prev_counter: 0,
-            // not all authenticators can store user handles
-            expected_user_handle: assertion.response.userHandle,
             assertion,
-            request
+            request,
+            expected_origin: expectations.origin,
+            expected_factor: expectations.factor,
+            prev_counter: expectations.prevCounter,
+            expected_user_handle: expectations.userHandle
         };
         let info;
         try {
@@ -49,6 +61,6 @@ module.exports = async function (fastify, options) {
             ex.statusCode = 400;
             throw ex;
         }
-        return await options.handler(info, request, reply);
+        return await handler(info, request, reply);
     });
 };

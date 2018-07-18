@@ -24,6 +24,12 @@ module.exports = async function (fastify, options) {
         });
     });
 
+    const complete_assertion_expectations = Object.assign({
+        async complete_assertion_expectations(assertion, assertion_expectations) {
+            return assertion_expectations;
+        }
+    }, fido2_options).complete_assertion_expectations;
+
     // Delete pub keys that aren't passed as argument
     for (const id of await get_uris()) {
         if (!valid_ids.has(id)) {
@@ -119,19 +125,20 @@ module.exports = async function (fastify, options) {
                 // not all authenticators can store user handles
                 userHandle: null
             }, assertion.response).userHandle;
+            const assertion_expectations = Object.assign({
+                // fido2-lib expects https
+                origin: `https://${request.headers.host}`,
+                // session is signed and we never set assertionChallengeTime without assertionChallenge
+                challenge: request.session.get('assertionChallenge'),
+                factor: 'either',
+                prevCounter: 0,
+                userHandle: userHandle,
+                publicKey: pub_key.pub_key
+            }, fido2_options.assertion_expectations);
             try {
                 await fido2lib.assertionResult(
                     assertion,
-                    Object.assign({
-                        // fido2-lib expects https
-                        origin: `https://${request.headers.host}`,
-                        // session is signed and we never set assertionChallengeTime without assertionChallenge
-                        challenge: request.session.get('assertionChallenge'),
-                        factor: 'either',
-                        prevCounter: 0,
-                        userHandle: userHandle,
-                        publicKey: pub_key.pub_key
-                    }, fido2_options.assertion_expectations));
+                    await complete_assertion_expectations(assertion, assertion_expectations));
             } catch (ex) {
                 ex.statusCode = 400;
                 throw ex;

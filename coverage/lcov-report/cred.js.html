@@ -22,7 +22,7 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>78/78</span>
+        <span class='fraction'>81/81</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
@@ -32,12 +32,12 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Functions</span>
-        <span class='fraction'>8/8</span>
+        <span class='fraction'>9/9</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>77/77</span>
+        <span class='fraction'>80/80</span>
       </div>
     </div>
     <p class="quiet">
@@ -187,7 +187,14 @@
 <a name='L139'></a><a href='#L139'>139</a>
 <a name='L140'></a><a href='#L140'>140</a>
 <a name='L141'></a><a href='#L141'>141</a>
-<a name='L142'></a><a href='#L142'>142</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -210,6 +217,12 @@
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">24x</span>
 <span class="cline-any cline-yes">24x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -309,16 +322,17 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -353,6 +367,12 @@ module.exports = async function (fastify, options) {
             cb(err, { pub_key, issuer_id });
         });
     });
+&nbsp;
+    const complete_assertion_expectations = Object.assign({
+        async complete_assertion_expectations(assertion, assertion_expectations) {
+            return assertion_expectations;
+        }
+    }, options).complete_assertion_expectations;
 &nbsp;
     // Delete pub keys that aren't passed as argument
     for (const id of await get_uris()) {
@@ -449,19 +469,20 @@ module.exports = async function (fastify, options) {
                 // not all authenticators can store user handles
                 userHandle: null
             }, assertion.response).userHandle;
+            const assertion_expectations = Object.assign({
+                // fido2-lib expects https
+                origin: `https://${request.headers.host}`,
+                // session is signed and we never set assertionChallengeTime without assertionChallenge
+                challenge: request.session.get('assertionChallenge'),
+                factor: 'either',
+                prevCounter: 0,
+                userHandle: userHandle,
+                publicKey: pub_key.pub_key
+            }, fido2_options.assertion_expectations);
             try {
                 await fido2lib.assertionResult(
                     assertion,
-                    Object.assign({
-                        // fido2-lib expects https
-                        origin: `https://${request.headers.host}`,
-                        // session is signed and we never set assertionChallengeTime without assertionChallenge
-                        challenge: request.session.get('assertionChallenge'),
-                        factor: 'either',
-                        prevCounter: 0,
-                        userHandle: userHandle,
-                        publicKey: pub_key.pub_key
-                    }, fido2_options.assertion_expectations));
+                    await complete_assertion_expectations(assertion, assertion_expectations));
             } catch (ex) {
                 ex.statusCode = 400;
                 throw ex;
@@ -475,7 +496,7 @@ module.exports = async function (fastify, options) {
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="https://istanbul.js.org/" target="_blank">istanbul</a> at Tue Jul 17 2018 08:33:28 GMT+0100 (British Summer Time)
+  generated by <a href="https://istanbul.js.org/" target="_blank">istanbul</a> at Wed Jul 18 2018 06:54:31 GMT+0100 (British Summer Time)
 </div>
 </div>
 <script src="prettify.js"></script>

@@ -34,7 +34,7 @@ fastify.register(require('webauthn-perk'), {
             db_for_update: true,
             no_updates: true,
             WEBAUTHN_MODE: true
-            // See https://github.com/davedoesdev/authorize-jwt for more options
+            // See https://github.com/davedoesdev/authorize-jwt#moduleexportsconfig-cb for more options
         },
         cred_options: {
             valid_ids: [], // List of unguessable IDs (strings)
@@ -67,6 +67,11 @@ fastify.register(require('webauthn-perk'), {
                     factor: 'either',
                     prevCounter: 0
                     // See https://apowers313.github.io/fido2-lib/Fido2Lib.html#assertionResult
+                },
+                async function complete_assertion_expectations(assertion, assertion_expectations) {
+                    // If you want to change assertion_expectations depending on the assertion,
+                    // override this function.
+                    return assertion_expectations;
                 }
             },
             secure_session_options: {
@@ -75,6 +80,13 @@ fastify.register(require('webauthn-perk'), {
         },
         perk_options: {
             prefix: '/perk', // Well-known path for presenting assertions is this plus /
+            assertion_expectations: {
+                origin: `https://${request.headers.host}`,
+                factor: 'either',
+                prevCounter: 0
+                // See https://apowers313.github.io/fido2-lib/Fido2Lib.html#assertionResult
+                // authorize_jwt_options.complete_webauthn_token can also supply these
+            },
             handler: function (info, request, reply) {
                 // This function is called after an assertion is successfully verified.
                 // You must override this or perk requests will fail.
@@ -83,13 +95,8 @@ fastify.register(require('webauthn-perk'), {
                 // info contains payload, uri, rev and assertion_result properties
                 // as described for the cb parameter here:
                 // https://github.com/davedoesdev/authorize-jwt#authorizejwtprototypeauthorizeauthz_token-allowed_algs-cb
+                throw new Error('missing handler');
             }
-            // TODO:
-            // perk be able to override these options
-            // expected_origin: `https://${request.headers.host}`,
-            // expected_factor: 'either',
-            // prev_counter: 0
-            // POST to cred/id should also call complete_webauthn_token
         }
     }
 });
