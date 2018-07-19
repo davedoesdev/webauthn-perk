@@ -99,7 +99,9 @@ async function make_fastify(port, options) {
         delete plugin_options.perk_options.handler;
     }
 
-    fastify.register(require('..'), plugin_options);
+    fastify.register(require('..'), {
+        webauthn_perk_options: plugin_options
+    });
 
     fastify.register(require('fastify-static'), {
         root: path.join(__dirname, 'fixtures'),
@@ -593,8 +595,6 @@ describe('credentials', function () {
         expect(called).to.be.true;
     });
 
-    // reference schemas
     // show example
-    // docs
     // open source ?
 });
