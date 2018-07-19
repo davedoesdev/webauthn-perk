@@ -595,6 +595,7 @@ describe('credentials', function () {
         expect(called).to.be.true;
     });
 
-    // show example
+    // example
+    // convert to es6 modules?
     // open source ?
 });

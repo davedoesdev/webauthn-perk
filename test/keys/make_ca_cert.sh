@@ -1,7 +1,7 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 
-cn="pub-keystore CouchDB CA"
+cn="webauthn-perk test CA"
 
 for arg in "$@"
 do

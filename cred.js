@@ -7,7 +7,9 @@ const default_user = 'Anonymous User';
 
 module.exports = async function (fastify, options) {
     options = options.cred_options || /* istanbul ignore next */ options;
-    const valid_ids = new Set(options.valid_ids.filter(id => id));
+    const valid_ids = new Set(Object.assign({
+        valid_ids: []
+    }, options).valid_ids.filter(id => id));
     fastify.log.info(`valid ids: ${Array.from(valid_ids)}`);
     const challenge_timeout = options.challenge_timeout || 60000;
 
