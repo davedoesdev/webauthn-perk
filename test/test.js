@@ -593,6 +593,8 @@ describe('credentials', function () {
         expect(called).to.be.true;
     });
 
+    // reference schemas
+    // show example
     // docs
     // open source ?
 });
