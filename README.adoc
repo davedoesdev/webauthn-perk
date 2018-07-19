@@ -19,6 +19,24 @@ Perk pattern (thanks to https://github.com/emlun[Emil Lundberg] for https://gith
 13. Alice's server verifies the assertion using Alice's public key.
 14. Bob receives a perk, i.e. Alice's Web server provides some service to Bob.
 
+== Example
+
+1. Run link:test/example.js[] on your server.
+
+2. Visit the URL it displays in your WebAuthn-supporting browser. The source to
+   this page is in link:test/fixtures/example.html[]. 
+
+3. Use your security token to register.
+
+4. Type in a message and click *Register*.
+
+5. You'll be shown another URL. Open this in a different browser (doesn't have to
+   support Webauthn).
+
+6. You should see your message.
+
+6. Repeat with different messages as you like.
+
 == Registering
 
 Register `webauthn-perk` with Fastify as normal. The available options and their defaults are described below.
