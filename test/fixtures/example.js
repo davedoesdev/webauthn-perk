@@ -1,14 +1,14 @@
 /* eslint-env browser */
 /* global axios */
 
-async function onload() {
+async function onload() { // eslint-disable-line no-unused-vars 
     // Get the unguessable ID from the page's URL.
     const parts = window.location.pathname.split('/');
     const id = parts[parts.length - 2];
     const cred_path = `/cred/${id}/`;
 
     // Get the challenge.
-    // TODO: Cope with 200 - check by POSTing
+    // TODO: Cope with 200 (if user refreshed the page) - check by POSTing
     const attestation_options = (await axios(cred_path, {
         validateStatus: status => status === 404
     })).data;
@@ -17,7 +17,7 @@ async function onload() {
 
     // Create a new credential and sign the challenge.
     const cred = await navigator.credentials.create({ publicKey: attestation_options });
-    const attestation_result = {
+    const unused_attestation_result = {
         id: cred.id,
         response: {
             attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
