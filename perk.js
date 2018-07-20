@@ -1,9 +1,10 @@
 /*eslint-env node */
-const url = require('url');
-const { promisify } = require('util');
-const { fix_assertion_types } = require('./common.js');
+import url from 'url';
+import { promisify } from 'util';
+import { fix_assertion_types } from './common.js';
+import { perk as perk_schemas } from './schemas.js';
 
-module.exports = async function (fastify, options) {
+export default async function (fastify, options) {
     options = options.perk_options || /* istanbul ignore next */ options;
 
     const authorize = promisify((authz_token, cb) => {
@@ -18,7 +19,7 @@ module.exports = async function (fastify, options) {
         }
     }, options).handler;
 
-    const schemas = require('./schemas.js').perk(options);
+    const schemas = perk_schemas(options);
 
     fastify.get('/', { schema: schemas.get }, async (request, reply) => {
         const post_response = await fastify.inject({
@@ -63,4 +64,4 @@ module.exports = async function (fastify, options) {
         }
         return await handler(info, request, reply);
     });
-};
+}

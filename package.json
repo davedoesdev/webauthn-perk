@@ -18,7 +18,8 @@
   "publishConfig": {
     "registry": "http://localhost:4873"
   },
-  "main": "plugin.js",
+  "main": "index.js",
+  "module": "plugin.js",
   "scripts": {
     "test": "grunt test",
     "ci": "grunt lint coverage"
@@ -33,6 +34,7 @@
   ],
   "dependencies": {
     "authorize-jwt": "^5.3.3",
+    "esm": "^3.0.72",
     "fastify-secure-session": "^0.4.3",
     "fido2-lib": "^2.1.1"
   },

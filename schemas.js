@@ -15,7 +15,7 @@ function byte_array(nullable) {
     };
 }
 
-exports.cred = function () {
+export function cred() {
     function key_info(challenge) {
         const r = {
             type: 'object',
@@ -135,9 +135,9 @@ exports.cred = function () {
             }
         }
     };
-};
+}
 
-exports.perk = function (options) {
+export function perk(options) {
     return {
         get: {
             querystring: {
@@ -163,10 +163,10 @@ exports.perk = function (options) {
                 additionalProperties: false,
                 properties: {
                     issuer_id: { type: 'string' },
-                    assertion: exports.cred().post
+                    assertion: cred().post
                 }
             },
             response: options.response_schema
         }
     };
-};
+}

@@ -1,11 +1,12 @@
 /*eslint-env node */
-const { promisify } = require('util');
-const { Fido2Lib } = require('fido2-lib');
-const { BufferToArrayBuffer, fix_assertion_types } = require('./common.js');
-const schemas = require('./schemas.js').cred();
+import { promisify } from 'util';
+import { Fido2Lib } from 'fido2-lib';
+import { BufferToArrayBuffer, fix_assertion_types } from './common.js';
+import fastify_secure_session from 'fastify-secure-session';
+import { cred as schemas } from './schemas.js';
 const default_user = 'Anonymous User';
 
-module.exports = async function (fastify, options) {
+export default async function (fastify, options) {
     options = options.cred_options || /* istanbul ignore next */ options;
     const valid_ids = new Set(Object.assign({
         valid_ids: []
@@ -40,7 +41,7 @@ module.exports = async function (fastify, options) {
         }
     }
 
-    fastify.register(require('fastify-secure-session'), options.secure_session_options);
+    fastify.register(fastify_secure_session, options.secure_session_options);
 
     function check_time(request, name) {
         const challengeTime = request.session.get(name);
@@ -148,4 +149,4 @@ module.exports = async function (fastify, options) {
             reply.code(204);
         });
     }
-};
+}

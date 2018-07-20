@@ -1,8 +1,11 @@
 /*eslint-env node */
-const { promisify } = require('util');
-const authorize_jwt = promisify(require('authorize-jwt'));
+import { promisify } from 'util';
+import mod_authorize_jwt from 'authorize-jwt';
+import perk from './perk.js';
+import cred from './cred.js';
+const authorize_jwt = promisify(mod_authorize_jwt);
 
-module.exports = async function (fastify, options) {
+export default async function (fastify, options) {
     options = options.webauthn_perk_options || options;
     
     const authorize_jwt_options = Object.assign({
@@ -28,7 +31,7 @@ module.exports = async function (fastify, options) {
         authz
     }, options.perk_options);
 
-    fastify.register(require('./perk.js'), {
+    fastify.register(perk, {
         prefix: perk_options.prefix,
         perk_options: perk_options
     });
@@ -38,8 +41,8 @@ module.exports = async function (fastify, options) {
         keystore: authz.keystore
     }, options.cred_options);
 
-    fastify.register(require('./cred.js'), {
+    fastify.register(cred, {
         prefix: cred_options.prefix,
         cred_options: cred_options
     });
-};
+}

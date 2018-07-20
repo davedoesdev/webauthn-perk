@@ -45,7 +45,8 @@ Register `webauthn-perk` with Fastify as normal. The available options and their
 
 [source,javascript]
 ----
-fastify.register(require('webauthn-perk'), {
+import webauthn_perk from 'webauthn-perk';
+fastify.register(webauthn_perk, {
     webauthn_perk_options: {
         authorize_jwt_options: {
             // You should override db_dir

@@ -1,11 +1,16 @@
 /* eslint-env node, mocha, browser */
 /* global browser, axios, KJUR */
 
-const { promisify } = require('util');
-const path = require('path');
-const readFile = require('fs').promises.readFile;
-const { expect } = require('chai');
-const randomBytes = promisify(require('crypto').randomBytes);
+import { promisify } from 'util';
+import path from 'path';
+import fs from 'fs';
+import { expect } from 'chai';
+import crypto from 'crypto';
+import webauthn_perk from '..';
+import mod_fastify from 'fastify';
+import fastify_static from 'fastify-static';
+const readFile = fs.promises.readFile;
+const randomBytes = promisify(crypto.randomBytes);
 const port = 3000;
 const origin = `https://localhost:${port}`;
 const audience = 'urn:webauthn-perk:test';
@@ -23,7 +28,7 @@ async function make_fastify(port, options) {
         }
     }, options);
 
-    const fastify = require('fastify')({
+    const fastify = mod_fastify({
         logger: true,
         https: {
             key: await readFile(path.join(__dirname, 'keys', 'server.key')),
@@ -104,11 +109,11 @@ async function make_fastify(port, options) {
         delete plugin_options.perk_options.handler;
     }
 
-    fastify.register(require('..'), {
+    fastify.register(webauthn_perk, {
         webauthn_perk_options: plugin_options
     });
 
-    fastify.register(require('fastify-static'), {
+    fastify.register(fastify_static, {
         root: path.join(__dirname, 'fixtures'),
         prefix: '/test'
     });
@@ -143,7 +148,8 @@ async function executeAsync(f, ...args) {
         (async function () {
             let done = args[args.length - 1];
             try {
-                done(await eval(f)(...args.slice(0, -1)));
+                // We need to use window.eval to stop esm writing eval
+                done(await window.eval(f)(...args.slice(0, -1)));
             } catch (ex) {
                 done({ error: ex.message }); 
             }
@@ -431,7 +437,7 @@ describe('credentials', function () {
         };
 
         // first check we don't delete valid ID
-        await require('..')(dummy_fastify, {
+        await webauthn_perk(dummy_fastify, {
             authorize_jwt_options: {
                 db_dir: path.join(__dirname, 'store'),
             },
@@ -447,7 +453,7 @@ describe('credentials', function () {
         expect(key_info2).to.eql(key_info);
 
         // then check we delete invalid IDs
-        await require('..')(dummy_fastify, {
+        await webauthn_perk(dummy_fastify, {
             authorize_jwt_options: {
                 db_dir: path.join(__dirname, 'store'),
             },

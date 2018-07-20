@@ -20,7 +20,7 @@ module.exports = function (grunt) {
         },
 
         exec: {
-            test: './node_modules/.bin/wdio',
+            test: 'node -r esm ./node_modules/.bin/wdio',
             wdio_cleanup: './test/wdio_cleanup.sh',
 
             cover: `${nyc_path} -x Gruntfile.js -x wdio.conf.js -x 'test/**' node ${grunt_path} test`,
