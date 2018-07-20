@@ -15,10 +15,6 @@ module.exports = {
             "error",
             "unix"
         ],
-        "quotes": [
-            "error",
-            "single"
-        ],
         "semi": [
             "error",
             "always"
@@ -29,7 +25,8 @@ module.exports = {
         ],
         "no-unused-vars": [
             "error", {
-                "varsIgnorePattern": "^unused_"
+                "varsIgnorePattern": "^unused_",
+                "argsIgnorePattern": "^unused_"
             }
         ]
     }

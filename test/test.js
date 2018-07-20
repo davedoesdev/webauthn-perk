@@ -34,7 +34,8 @@ async function make_fastify(port, options) {
     const plugin_options = {
         authorize_jwt_options: {
             db_dir: path.join(__dirname, 'store'),
-            complete_webauthn_token: options.complete_webauthn_token
+            complete_webauthn_token: options.complete_webauthn_token,
+            on_authz: options.on_authz
         },
         cred_options: {
             valid_ids: options.valid_ids,
@@ -90,6 +91,10 @@ async function make_fastify(port, options) {
             handler: options.handler
         }
     };
+
+    if (plugin_options.authorize_jwt_options.on_authz === undefined) {
+        delete plugin_options.authorize_jwt_options.on_authz;
+    }
 
     if (plugin_options.cred_options.fido2_options.complete_assertion_expectations === undefined) {
         delete plugin_options.cred_options.fido2_options.complete_assertion_expectations;
@@ -595,7 +600,23 @@ describe('credentials', function () {
         expect(called).to.be.true;
     });
 
-    // example
-    // convert to es6 modules?
-    // open source ?
+    it('should call on_authz', async function () {
+        let called = false;
+        async function on_authz(authz) {
+            expect(authz.keystore).to.exist;
+            called = true;
+        }
+
+        const port5 = port + 4;
+        const id5 = (await randomBytes(64)).toString('hex');
+        await make_fastify(port5, {
+            valid_ids: [id5],
+            on_authz
+        });
+        const origin5 = `https://localhost:${port5}`;
+
+        await browser.url(`${origin5}/test/cred.html`);
+
+        expect(called).to.be.true;
+    });
 });

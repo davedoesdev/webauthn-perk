@@ -52,6 +52,7 @@ fastify.register(require('webauthn-perk'), {
             db_dir: 'node_modules/pub-keystore/pouchdb/store/pub-keys',
             db_type: 'pouchdb',
             db_for_update: true,
+            no_changes: true,
             no_updates: true,
             WEBAUTHN_MODE: true
             // See https://github.com/davedoesdev/authorize-jwt#moduleexportsconfig-cb for more options

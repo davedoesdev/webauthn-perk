@@ -37,8 +37,10 @@ async function onload() { // eslint-disable-line no-unused-vars
             }
         };
         ({ cred_id, issuer_id } = (await axios.put(cred_path, attestation_result)).data);
-        // Note: If someone happened to register between get_response and put_response then
-        // we'll get a 409 status and an exception here. We'll ignore that for this example.
+        // TODO: If someone happened to register between get_response and put_response then
+        // we'll get a 409 status and an exception here. Can we just say this is an error?
+        // What if some other browser on the system did it? Do we need to loop and try again
+        // (we'll pick up the 200 and fail to verify if it was someone else)?
     } else {
         // 200, already registered so verify it was us
         let challenge;
@@ -145,7 +147,7 @@ async function onload() { // eslint-disable-line no-unused-vars
         perk_url.search = params.toString();
 
         const perk_div = document.createElement('div');
-        const perk_text = document.createTextNode('Copy the following link\'s address and open it in a new browser: ');
+        const perk_text = document.createTextNode("Copy the following link's address and open it in a new browser: ");
         perk_div.appendChild(perk_text);
         const a = document.createElement('a');
         a.href = perk_url.toString();
@@ -156,4 +158,7 @@ async function onload() { // eslint-disable-line no-unused-vars
     });
 }
 
+// TODO: why unused_ not working?
 // TODO: catch errors and show them in page (e.g. if server offline)
+// convert to es6 modules?
+// open source ?
