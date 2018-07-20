@@ -32,7 +32,7 @@ Perk pattern (thanks to https://github.com/emlun[Emil Lundberg] for https://gith
 
 4. Type in a message and click *Generate*.
 
-5. You'll be shown another URL. Open this in a different browser (doesn't have to
+5. You'll be shown another link. Open this in a different browser (doesn't have to
    support Webauthn).
 
 6. You should see your message.
