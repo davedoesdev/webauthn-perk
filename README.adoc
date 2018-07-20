@@ -28,9 +28,9 @@ Perk pattern (thanks to https://github.com/emlun[Emil Lundberg] for https://gith
    Either click through the certificate warnings or add link:test/keys/ca.crt[]
    to your browser's trusted certificate authorities.
 
-3. Use your security token to register.
+3. Use your security token to register or authenticate.
 
-4. Type in a message and click *Register*.
+4. Type in a message and click *Generate*.
 
 5. You'll be shown another URL. Open this in a different browser (doesn't have to
    support Webauthn).

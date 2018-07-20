@@ -1,0 +1,13 @@
+input {
+    margin-top: 10px;
+}
+
+input[type="button"] {
+    margin-left: 5px;
+    margin-bottom: 10px;
+}
+
+label::before {
+    content: "\a";
+    white-space: pre;
+}
