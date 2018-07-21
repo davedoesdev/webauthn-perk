@@ -21,7 +21,7 @@ Perk pattern (thanks to https://github.com/emlun[Emil Lundberg] for https://gith
 
 == Example
 
-1. Run link:test/example.js[] on your server.
+1. Run link:test/example.js[] on your server (`node -r esm test/example.js`).
 
 2. Visit the URL it displays in your WebAuthn-supporting browser. The source to
    this page is in link:test/fixtures/example.html[] and link:test/fixtures/example.js[].

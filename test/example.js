@@ -1,13 +1,18 @@
 /* eslint-env node */
 /* eslint-disable no-console */
 
-const path = require('path');
-const readFile = require('fs').promises.readFile;
-const { promisify } = require('util');
-const randomBytes = promisify(require('crypto').randomBytes);
+import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
+import { promisify } from 'util';
+import mod_fastify from 'fastify';
+import fastify_static from 'fastify-static';
+import webauthn_perk from '..';
+const readFile = fs.promises.readFile;
+const randomBytes = promisify(crypto.randomBytes);
 
 (async function () {
-    const fastify = require('fastify')({
+    const fastify = mod_fastify({
         logger: true,
         https: {
             key: await readFile(path.join(__dirname, 'keys', 'server.key')),
@@ -17,7 +22,7 @@ const randomBytes = promisify(require('crypto').randomBytes);
 
     const id = (await randomBytes(64)).toString('hex');
 
-    fastify.register(require('..'), {
+    fastify.register(webauthn_perk, {
         authorize_jwt_options: {
             db_dir: path.join(__dirname, 'store'),
         },
@@ -39,7 +44,7 @@ const randomBytes = promisify(require('crypto').randomBytes);
         }
     });
 
-    fastify.register(require('fastify-static'), {
+    fastify.register(fastify_static, {
         root: path.join(__dirname, 'fixtures'),
         prefix: `/${id}`
     });

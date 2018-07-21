@@ -166,5 +166,5 @@ async function onload() { // eslint-disable-line no-unused-vars
     }
 }
 
-// convert to es6 modules?
+// why is example now asking for extended information?
 // open source ?

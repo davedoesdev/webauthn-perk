@@ -1,5 +1,5 @@
 /* eslint-env node */
-exports.config = {
+export const config = {
     
     //
     // ==================
