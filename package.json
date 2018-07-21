@@ -33,7 +33,7 @@
     "fastify"
   ],
   "dependencies": {
-    "authorize-jwt": "^5.3.3",
+    "authorize-jwt": "^5.4.0",
     "esm": "^3.0.72",
     "fastify-secure-session": "^0.4.3",
     "fido2-lib": "^2.1.1"

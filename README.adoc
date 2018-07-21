@@ -55,8 +55,11 @@ fastify.register(webauthn_perk, {
             db_for_update: true,
             no_changes: true,
             no_updates: true,
-            WEBAUTHN_MODE: true
+            WEBAUTHN_MODE: true,
             // See https://github.com/davedoesdev/authorize-jwt#moduleexportsconfig-cb for more options
+            async on_authz(unused_authz) {
+                // Receives the AuthorizeJWT instance once it's constructed (see https://github.com/davedoesdev/authorize-jwt)
+            }
         },
         cred_options: {
             valid_ids: [], // List of unguessable IDs (strings)

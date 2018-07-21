@@ -165,3 +165,5 @@ async function onload() { // eslint-disable-line no-unused-vars
         document.body.appendChild(error_div);
     }
 }
+
+// TODO: Should we create client-side lib to wrap it all up?
