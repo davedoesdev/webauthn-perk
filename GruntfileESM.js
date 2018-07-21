@@ -23,7 +23,7 @@ export default function (grunt) {
             test: 'node -r esm ./node_modules/.bin/wdio',
             wdio_cleanup: './test/wdio_cleanup.sh',
 
-            cover: `${nyc_path} -x Gruntfile.js -x wdio.conf.js -x 'test/**' node ${grunt_path} test`,
+            cover: `${nyc_path} --require esm -x wdio.conf.js -x 'test/**' ./node_modules/.bin/wdio`,
             cover_report: `${nyc_path} report -r lcov`,
             cover_check: `${nyc_path} check-coverage --statements 100 --branches 100 --functions 100 --lines 100`
         }
