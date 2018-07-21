@@ -4,9 +4,6 @@ import path from 'path';
 const mod_path = path.join('.', 'node_modules');
 const bin_path = path.join(mod_path, '.bin');
 const nyc_path = path.join(bin_path, 'nyc');
-const grunt_path = process.platform === 'win32' ?
-    path.join(mod_path, 'grunt', 'bin', 'grunt') :
-    path.join(bin_path, 'grunt');
 
 export default function (grunt) {
     grunt.initConfig({
