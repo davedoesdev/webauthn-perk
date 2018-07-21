@@ -165,6 +165,3 @@ async function onload() { // eslint-disable-line no-unused-vars
         document.body.appendChild(error_div);
     }
 }
-
-// add rest of README
-// open source ?

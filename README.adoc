@@ -173,3 +173,38 @@ The following routes will be added to your server. All request and response bodi
 *** The response is the same as described above for POST requests for `/perk/`.
 
 JSON schemas for these routes can be found in link:schemas.js[].
+
+== Installation
+
+[source,bash]
+----
+npm install webauthn-perk
+----
+
+== Licence
+
+Unlicenced
+
+== Test
+
+[source,bash]
+----
+grunt test
+----
+
+== Lint
+
+[source,bash]
+----
+grunt lint
+----
+
+== Coverage
+
+[source,bash]
+----
+grunt coverage
+----
+
+https://istanbul.js.org/[Istanbul] results are available 
+https://gitlab.com/davedoesdev/webauthn-perk/builds/artifacts/master/download?job=ci"[here].
