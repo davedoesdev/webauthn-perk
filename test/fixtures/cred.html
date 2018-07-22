@@ -1,7 +1,11 @@
 <html>
     <head>
-        <script type="text/javascript" src="axios.min.js"></script>
-        <script type="text/javascript" src="jsrsasign-all-min.js"></script>
+        <script type="module">
+            import axios from './axios.min.js';
+            window.axios = axios;
+            import KJUR from './jsrsasign-all-min.js';
+            window.KJUR = KJUR;
+        </script>
     </head>
     <body></body>
 </html>
