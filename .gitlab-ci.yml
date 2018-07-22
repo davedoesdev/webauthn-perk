@@ -12,7 +12,8 @@ before_script:
 
 ci:
   script:
-    - npm install
+    # gitlab images run as root in container
+    - npm install --unsafe-perm
     - xvfb-run bash -c 'fvwm& npm run ci'
   coverage: '/^All files[^\d]*(\d+[.\d]*)/'
   artifacts:
