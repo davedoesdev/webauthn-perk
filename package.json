@@ -22,7 +22,8 @@
   "module": "plugin.js",
   "scripts": {
     "test": "grunt test",
-    "ci": "grunt lint coverage"
+    "ci": "grunt lint coverage",
+    "postinstall": "grunt fileWrap"
   },
   "directories": {
     "test": "test"
