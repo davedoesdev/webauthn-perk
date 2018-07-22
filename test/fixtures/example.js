@@ -1,71 +1,84 @@
 /* eslint-env browser */
 /* global axios, KJUR */
 
-async function onload() { // eslint-disable-line no-unused-vars 
-    try {
-        // Get the unguessable ID from the page's URL.
-        const parts = window.location.pathname.split('/');
-        const id = parts[parts.length - 2];
-        const cred_path = `/cred/${id}/`;
+class PerkWorkflow {
+    constructor(cred_path, perk_path) {
+        this.cred_path = cred_path;
+        this.perk_path = perk_path;
+    }
 
-        // Check if someone has registered
-        const get_response = await axios(cred_path, {
+    async check_registration() {
+        const get_response = await axios(this.cred_path, {
             validateStatus: status => status === 404 || status === 200
         });
 
-        let cred_id, issuer_id;
+        this.get_options = get_response.data;
+        return get_response.status === 200;
+    }
 
-        if (get_response.status === 404) {
-            // 404, not yet registered
-            const attestation_options = get_response.data;
-            attestation_options.challenge = Uint8Array.from(attestation_options.challenge);
-            attestation_options.user.id = new TextEncoder('utf-8').encode(attestation_options.user.id);
+    async register() {
+        // Create a new credential and sign the challenge.
+        const attestation_options = this.get_options;
+        attestation_options.challenge = Uint8Array.from(attestation_options.challenge);
+        attestation_options.user.id = new TextEncoder('utf-8').encode(attestation_options.user.id);
+        const cred = await navigator.credentials.create({ publicKey: attestation_options });
 
-            // Ask the user to register
-            const register_text = document.createTextNode('Please register using your token');
-            document.body.appendChild(register_text);
+        // Register
+        const attestation_result = {
+            id: cred.id,
+            response: {
+                attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
+                clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
+            }
+        };
 
-            // Create a new credential and sign the challenge.
-            const cred = await navigator.credentials.create({ publicKey: attestation_options });
-            document.body.removeChild(register_text);
+        ({ cred_id: this.cred_id, issuer_id: this.issuer_id } =
+            (await axios.put(this.cred_path, attestation_result)).data);
+    }
 
-            // Register
-            const attestation_result = {
-                id: cred.id,
-                response: {
-                    attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
-                    clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
-                }
-            };
-            ({ cred_id, issuer_id } = (await axios.put(cred_path, attestation_result)).data);
-            // TODO: If someone happened to register between get_response and put_response then
-            // we'll get a 409 status and an exception here. Can we just say this is an error?
-            // What if some other browser on the system did it? Do we need to loop and try again
-            // (we'll pick up the 200 and fail to verify if it was someone else)?
-            // Use another PC to register with another key while waiting here
-        } else {
-            // 200, already registered so verify it was us
-            let challenge;
-            ({ cred_id, issuer_id, challenge } = get_response.data);
+    async verify() {
+        // Sign challenge with credential
+        let challenge;
+        ({ cred_id: this.cred_id, issuer_id: this.issuer_id, challenge } = this.get_options);
+        const assertion = await navigator.credentials.get({
+            publicKey: {
+                challenge: Uint8Array.from(challenge),
+                allowCredentials: [{
+                    id: Uint8Array.from(this.cred_id),
+                    type: 'public-key'
+                }]
+            }
+        });
+            
+        // Authenticate
+        const assertion_result = {
+            id: assertion.id,
+            response: {
+                authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
+                clientDataJSON: new TextDecoder('utf-8').decode(assertion.response.clientDataJSON),
+                signature: Array.from(new Uint8Array(assertion.response.signature)),
+                userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
+            }
+        };
+        await axios.post(this.cred_path, assertion_result);
+    }
 
-            // Ask the user to authenticate
-            const authenticate_text = document.createTextNode('Please authenticate using your token');
-            document.body.appendChild(authenticate_text);
+    async perk(jwt) {
+        // Sign JWT
+        const assertion = await navigator.credentials.get({
+            publicKey: {
+                challenge: new TextEncoder('utf-8').encode(jwt),
+                allowCredentials: [{
+                    id: Uint8Array.from(this.cred_id),
+                    type: 'public-key'
+                }]
+            }
+        });
 
-            // Sign challenge with credential
-            const assertion = await navigator.credentials.get({
-                publicKey: {
-                    challenge: Uint8Array.from(challenge),
-                    allowCredentials: [{
-                        id: Uint8Array.from(cred_id),
-                        type: 'public-key'
-                    }]
-                }
-            });
-            document.body.removeChild(authenticate_text);
-
-            // Authenticate
-            const assertion_result = {
+        // Make perk URL
+        const assertion_result = {
+            issuer_id: this.issuer_id,
+            assertion: {
                 id: assertion.id,
                 response: {
                     authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
@@ -73,14 +86,79 @@ async function onload() { // eslint-disable-line no-unused-vars
                     signature: Array.from(new Uint8Array(assertion.response.signature)),
                     userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
                 }
-            };
-            await axios.post(cred_path, assertion_result);
+            }
+        };
+        const perk_url = new URL(location.href);
+        perk_url.pathname = this.perk_path;
+        const params = new URLSearchParams();
+        params.set('assertion_result', JSON.stringify(assertion_result));
+        perk_url.search = params.toString();
+
+        return perk_url;
+    }
+
+    async authenticate() {
+        // Check if someone has registered
+        if (await this.check_registration()) {
+            // Already registered so verify it was us
+            await this.before_verify();
+            await this.verify();
+            await this.after_verify();
             // TODO: test failure when use different token
+        } else {
+            // Not registered
+            await this.before_register();
+            await this.register();
+            await this.after_register();
+            // TODO: If someone happened to register between get_response and put_response then
+            // we'll get a 409 status and an exception here. Can we just say this is an error?
+            // What if some other browser on the system did it? Do we need to loop and try again
+            // (we'll pick up the 200 and fail to verify if it was someone else)?
+            // Use another PC to register with another key while waiting here
         }
+        // Now we have the credential ID (identifying the private key)
+        // and the issuer ID (identifying the public key)
+    }
 
-        // Now we have the credential ID (identifying the private key) and the issuer ID
-        // (identifying the public key), we can generation assertions.
+    async before_verify() {}
+    async after_verify() {}
+    async before_register() {}
+    async after_register() {}
+}
 
+class ExamplePerkWorkflow extends PerkWorkflow {
+    async before_verify() {
+        // Ask the user to authenticate
+        this.authenticate_text = document.createTextNode('Please authenticate using your token');
+        document.body.appendChild(this.authenticate_text);
+    }
+
+    async after_verify() {
+        document.body.removeChild(this.authenticate_text);
+    }
+
+    async before_register() {
+        // Ask the user to register
+        this.register_text = document.createTextNode('Please register using your token');
+        document.body.appendChild(this.register_text);
+    }
+
+    async after_register() {
+        document.body.removeChild(this.register_text);
+    }
+}
+
+async function onload() { // eslint-disable-line no-unused-vars 
+    try {
+        // Get the unguessable ID from the page's URL
+        const parts = window.location.pathname.split('/');
+        const id = parts[parts.length - 2];
+
+        // Start the workflow
+        const workflow = new ExamplePerkWorkflow(`/cred/${id}/`, '/perk/');
+        await workflow.authenticate();
+
+        // Generate assertions
         const generate_text = document.createTextNode('Please enter a message and click Generate');
         document.body.appendChild(generate_text);
 
@@ -117,36 +195,9 @@ async function onload() { // eslint-disable-line no-unused-vars
             sign_div.appendChild(sign_text);
             document.body.appendChild(sign_div);
 
-            // Sign JWT
-            const assertion = await navigator.credentials.get({
-                publicKey: {
-                    challenge: new TextEncoder('utf-8').encode(jwt),
-                    allowCredentials: [{
-                        id: Uint8Array.from(cred_id),
-                        type: 'public-key'
-                    }]
-                }
-            });
+            // Sign JWT and get perk URL
+            const perk_url = await workflow.perk(jwt);
             document.body.removeChild(sign_div);
-
-            // Make perk URL
-            const assertion_result = {
-                issuer_id,
-                assertion: {
-                    id: assertion.id,
-                    response: {
-                        authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
-                        clientDataJSON: new TextDecoder('utf-8').decode(assertion.response.clientDataJSON),
-                        signature: Array.from(new Uint8Array(assertion.response.signature)),
-                        userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
-                    }
-                }
-            };
-            const perk_url = new URL(location.href);
-            perk_url.pathname = '/perk/';
-            const params = new URLSearchParams();
-            params.set('assertion_result', JSON.stringify(assertion_result));
-            perk_url.search = params.toString();
 
             const perk_div = document.createElement('div');
             const perk_text = document.createTextNode("Copy the following link's address and open it in a new browser: ");
@@ -166,4 +217,5 @@ async function onload() { // eslint-disable-line no-unused-vars
     }
 }
 
-// TODO: Should we create client-side lib to wrap it all up?
+// TODO:
+//   we decode cred_id too much
