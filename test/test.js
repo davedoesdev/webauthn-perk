@@ -149,7 +149,7 @@ async function executeAsync(f, ...args) {
             function sleep(ms) {
                 return new Promise(resolve => setTimeout(resolve, ms));
             }
-            while (typeof axios === 'undefined') {
+            while (typeof KJUR === 'undefined') {
                 sleep(500);
             }
             let done = args[args.length - 1];
