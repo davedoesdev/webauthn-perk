@@ -146,9 +146,15 @@ before(async function () {
 async function executeAsync(f, ...args) {
     const r = (await browser.executeAsync(function (f, ...args) {
         (async function () {
+            function sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            while (typeof axios === 'undefined') {
+                sleep(500);
+            }
             let done = args[args.length - 1];
             try {
-                // We need to use window.eval to stop esm writing eval
+                // We need to use window.eval to stop esm rewriting eval
                 done(await window.eval(f)(...args.slice(0, -1)));
             } catch (ex) {
                 done({ error: ex.message }); 
