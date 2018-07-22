@@ -1,5 +1,6 @@
 /* eslint-env browser */
-/* global axios */
+
+import axios from './axios.min.js';
 
 export class PerkWorkflow {
     constructor(cred_path, perk_path) {

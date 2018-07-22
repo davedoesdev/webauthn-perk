@@ -23,12 +23,31 @@ export default function (grunt) {
             cover: `${nyc_path} --require esm -x wdio.conf.js -x 'test/**' ./node_modules/.bin/wdio`,
             cover_report: `${nyc_path} report -r lcov`,
             cover_check: `${nyc_path} check-coverage --statements 100 --branches 100 --functions 100 --lines 100`
+        },
+
+        fileWrap: {
+            axios: {
+                header: 'export default (function () {',
+                footer: 'return this.axios; }).call({});',
+                files: {
+                    './test/fixtures/axios.min.js': './node_modules/axios/dist/axios.min.js'
+                }
+            },
+
+            jsrsasign: {
+                header: 'export default (function () {',
+                footer: 'return KJUR; }).call({});',
+                files: {
+                    './test/fixtures/jsrsasign-all-min.js': './node_modules/jsrsasign/lib/jsrsasign-all-min.js'
+                }
+            }
         }
     });
 
     grunt.loadNpmTasks('grunt-eslint');
     grunt.loadNpmTasks('grunt-exec');
     grunt.loadNpmTasks('grunt-force-task');
+    grunt.loadNpmTasks('grunt-file-wrap');
 
     grunt.registerTask('lint', 'eslint');
 

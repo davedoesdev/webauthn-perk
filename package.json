@@ -47,6 +47,7 @@
     "grunt": "^1.0.3",
     "grunt-eslint": "^21.0.0",
     "grunt-exec": "^3.0.0",
+    "grunt-file-wrap": "0.0.2",
     "grunt-force-task": "^2.0.0",
     "jsrsasign": "^8.0.12",
     "mocha": "^5.2.0",
