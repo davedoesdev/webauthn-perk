@@ -25,6 +25,13 @@ class ExamplePerkWorkflow extends PerkWorkflow {
     }
 }
 
+function show_error(ex) {
+    const error_div = document.createElement('div');
+    const error_text = document.createTextNode(`Error: ${ex.message}`);
+    error_div.appendChild(error_text);
+    document.body.appendChild(error_div);
+}
+
 window.addEventListener('load', async function () {
     try {
         // Get the unguessable ID from the page's URL
@@ -54,42 +61,43 @@ window.addEventListener('load', async function () {
         document.body.appendChild(generate_button);
 
         generate_button.addEventListener('click', async function () {
-            // Generate JWT containing message as a claim
-            const now = Math.floor(Date.now() / 1000);
-            const jwt = KJUR.jws.JWS.sign(null, {
-                alg: 'none',
-                typ: 'JWT'
-            }, {
-                iat: now,
-                nbf: now,
-                exp: now + 10 * 60, // 10 minutes
-                message: message_input.value
-            });
+            try {
+                // Generate JWT containing message as a claim
+                const now = Math.floor(Date.now() / 1000);
+                const jwt = KJUR.jws.JWS.sign(null, {
+                    alg: 'none',
+                    typ: 'JWT'
+                }, {
+                    iat: now,
+                    nbf: now,
+                    exp: now + 10 * 60, // 10 minutes
+                    message: message_input.value
+                });
 
-            // Ask the user to sign
-            const sign_div = document.createElement('div');
-            const sign_text = document.createTextNode('Please sign using your token');
-            sign_div.appendChild(sign_text);
-            document.body.appendChild(sign_div);
+                // Ask the user to sign
+                const sign_div = document.createElement('div');
+                const sign_text = document.createTextNode('Please sign using your token');
+                sign_div.appendChild(sign_text);
+                document.body.appendChild(sign_div);
 
-            // Sign JWT and get perk URL
-            const perk_url = await workflow.perk(jwt);
-            document.body.removeChild(sign_div);
+                // Sign JWT and get perk URL
+                const perk_url = await workflow.perk(jwt);
+                document.body.removeChild(sign_div);
 
-            const perk_div = document.createElement('div');
-            const perk_text = document.createTextNode("Copy the following link's address and open it in a new browser: ");
-            perk_div.appendChild(perk_text);
-            const a = document.createElement('a');
-            a.href = perk_url.toString();
-            const a_text = document.createTextNode('link');
-            a.appendChild(a_text);
-            perk_div.appendChild(a);
-            document.body.appendChild(perk_div);
+                const perk_div = document.createElement('div');
+                const perk_text = document.createTextNode("Copy the following link's address and open it in a new browser: ");
+                perk_div.appendChild(perk_text);
+                const a = document.createElement('a');
+                a.href = perk_url.toString();
+                const a_text = document.createTextNode('link');
+                a.appendChild(a_text);
+                perk_div.appendChild(a);
+                document.body.appendChild(perk_div);
+            } catch (ex) {
+                show_error(ex);
+            }
         });
     } catch (ex) {
-        const error_div = document.createElement('div');
-        const error_text = document.createTextNode(`Error: ${ex.message}`);
-        error_div.appendChild(error_text);
-        document.body.appendChild(error_div);
+        show_error(ex);
     }
 });

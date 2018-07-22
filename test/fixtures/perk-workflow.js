@@ -112,7 +112,6 @@ export class PerkWorkflow {
             await this.before_verify();
             await this.verify();
             await this.after_verify();
-            // TODO: test failure when use different token
         } else {
             // Not registered
             await this.before_register();
