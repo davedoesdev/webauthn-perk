@@ -149,9 +149,7 @@ async function executeAsync(f, ...args) {
             function sleep(ms) {
                 return new Promise(resolve => setTimeout(resolve, ms));
             }
-            while (typeof KJUR === 'undefined') {
-                sleep(500);
-            }
+            sleep(2000);
             let done = args[args.length - 1];
             try {
                 // We need to use window.eval to stop esm rewriting eval
