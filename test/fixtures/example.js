@@ -12,15 +12,17 @@ class PerkWorkflow {
             validateStatus: status => status === 404 || status === 200
         });
 
-        this.get_options = get_response.data;
+        this.get_result = get_response.data;
         return get_response.status === 200;
     }
 
     async register() {
-        // Create a new credential and sign the challenge.
-        const attestation_options = this.get_options;
+        // Unpack the options
+        const attestation_options = this.get_result;
         attestation_options.challenge = Uint8Array.from(attestation_options.challenge);
         attestation_options.user.id = new TextEncoder('utf-8').encode(attestation_options.user.id);
+
+        // Create a new credential and sign the challenge.
         const cred = await navigator.credentials.create({ publicKey: attestation_options });
 
         // Register
@@ -34,17 +36,22 @@ class PerkWorkflow {
 
         ({ cred_id: this.cred_id, issuer_id: this.issuer_id } =
             (await axios.put(this.cred_path, attestation_result)).data);
+
+        this.cred_id = Uint8Array.from(this.cred_id);
     }
 
     async verify() {
-        // Sign challenge with credential
+        // Unpack the IDs and challenge
         let challenge;
-        ({ cred_id: this.cred_id, issuer_id: this.issuer_id, challenge } = this.get_options);
+        ({ cred_id: this.cred_id, issuer_id: this.issuer_id, challenge } = this.get_result);
+        this.cred_id = Uint8Array.from(this.cred_id);
+
+        // Sign challenge with credential
         const assertion = await navigator.credentials.get({
             publicKey: {
                 challenge: Uint8Array.from(challenge),
                 allowCredentials: [{
-                    id: Uint8Array.from(this.cred_id),
+                    id: this.cred_id,
                     type: 'public-key'
                 }]
             }
@@ -69,7 +76,7 @@ class PerkWorkflow {
             publicKey: {
                 challenge: new TextEncoder('utf-8').encode(jwt),
                 allowCredentials: [{
-                    id: Uint8Array.from(this.cred_id),
+                    id: this.cred_id,
                     type: 'public-key'
                 }]
             }
@@ -216,6 +223,3 @@ async function onload() { // eslint-disable-line no-unused-vars
         document.body.appendChild(error_div);
     }
 }
-
-// TODO:
-//   we decode cred_id too much
