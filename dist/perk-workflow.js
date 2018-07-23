@@ -117,11 +117,6 @@ export class PerkWorkflow {
             await this.before_register();
             await this.register();
             await this.after_register();
-            // TODO: If someone happened to register between get_response and put_response then
-            // we'll get a 409 status and an exception here. Can we just say this is an error?
-            // What if some other browser on the system did it? Do we need to loop and try again
-            // (we'll pick up the 200 and fail to verify if it was someone else)?
-            // Use another PC to register with another key while waiting here
         }
         // Now we have the credential ID (identifying the private key)
         // and the issuer ID (identifying the public key)
