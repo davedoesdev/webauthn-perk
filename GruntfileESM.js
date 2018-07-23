@@ -28,17 +28,23 @@ export default function (grunt) {
         fileWrap: {
             axios: {
                 header: 'export default (function () {',
-                footer: 'return this.axios; }).call({});',
+                footer: '\nreturn this.axios; }).call({});',
                 files: {
                     './test/fixtures/axios.min.js': './node_modules/axios/dist/axios.min.js'
+                },
+                options: {
+                    skipCheck: true
                 }
             },
 
             jsrsasign: {
                 header: 'export default (function () {',
-                footer: 'return KJUR; }).call({});',
+                footer: '\nreturn KJUR; }).call({});',
                 files: {
                     './test/fixtures/jsrsasign-all-min.js': './node_modules/jsrsasign/lib/jsrsasign-all-min.js'
+                },
+                options: {
+                    skipCheck: true
                 }
             }
         }
