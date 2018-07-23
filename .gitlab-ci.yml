@@ -14,6 +14,8 @@ ci:
   script:
     # gitlab images run as root in container
     - npm install --unsafe-perm
+    - ls -l test/fixtures
+    - cat test/fixtures/axios.min.js
     - xvfb-run bash -c 'fvwm& npm run ci'
   coverage: '/^All files[^\d]*(\d+[.\d]*)/'
   artifacts:
