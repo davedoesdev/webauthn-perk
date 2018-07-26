@@ -140,7 +140,7 @@ before(async function () {
 
     fastify = await make_fastify(port);
 
-    await browser.url(`${origin}/test/cred.html`);
+    await browser.url(`${origin}/test/test.html`);
 });
 
 async function executeAsync(f, ...args) {
@@ -187,7 +187,7 @@ async function auth(url, options) {
         const cred = await navigator.credentials.create({ publicKey: attestation_options });
 
         const attestation_result = {
-            id: cred.id,
+            id: options.no_cred_id ? undefined : cred.id,
             response: {
                 attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
                 clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
@@ -380,6 +380,15 @@ describe('credentials', function () {
         }, urls[0]);
     });
 
+    it('should return 400 when schema not satisfied', async function () {
+        let [unused_attestation_result, error, status] = await auth(urls[0], {
+            no_cred_id: true,
+            valid_status: 400
+        });
+        expect(status).to.equal(400);
+        expect(error.message).to.equal("body should have required property 'id'");
+    });
+
     let attestation_result, key_info;
 
     it('should return challenge and add public key', async function () {
@@ -553,7 +562,7 @@ describe('credentials', function () {
         const origin2 = `https://localhost:${port2}`;
         const cred_url2 = `${origin2}/cred/${id2}/`;
 
-        await browser.url(`${origin2}/test/cred.html`);
+        await browser.url(`${origin2}/test/test.html`);
         await auth(cred_url2);
         const [data, status] = await perk(cred_url2, origin2, { valid_status: 500 });
         expect(data.message).to.equal('missing handler');
@@ -576,7 +585,7 @@ describe('credentials', function () {
         const origin3 = `https://localhost:${port3}`;
         const cred_url3 = `${origin3}/cred/${id3}/`;
 
-        await browser.url(`${origin3}/test/cred.html`);
+        await browser.url(`${origin3}/test/test.html`);
         await auth(cred_url3);
         await perk(cred_url3, origin3);
 
@@ -599,7 +608,7 @@ describe('credentials', function () {
         const origin4 = `https://localhost:${port4}`;
         const cred_url4 = `${origin4}/cred/${id4}/`;
 
-        await browser.url(`${origin4}/test/cred.html`);
+        await browser.url(`${origin4}/test/test.html`);
         await auth(cred_url4);
         await verify(cred_url4);
 
@@ -621,7 +630,7 @@ describe('credentials', function () {
         });
         const origin5 = `https://localhost:${port5}`;
 
-        await browser.url(`${origin5}/test/cred.html`);
+        await browser.url(`${origin5}/test/test.html`);
 
         expect(called).to.be.true;
     });

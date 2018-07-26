@@ -5,3 +5,4 @@
 /.nyc_output
 /test/fixtures/axios.min.js
 /test/fixtures/jsrsasign-all-min.js
+/test/fixtures/ajv.min.js

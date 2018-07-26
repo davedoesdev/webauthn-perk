@@ -12,7 +12,8 @@ export default function (grunt) {
                 '*.js',
                 'test/**/*.js',
                 '!test/fixtures/axios.min.js',
-                '!test/fixtures/jsrsasign-all-min.js'
+                '!test/fixtures/jsrsasign-all-min.js',
+                '!test/fixtures/ajv.min.js'
             ]
         },
 
@@ -46,7 +47,20 @@ export default function (grunt) {
                 options: {
                     skipCheck: true
                 }
+            },
+
+            ajv: {
+                header: 'export default (function () {',
+                footer: '\nreturn Ajv; }).call({});',
+                files: {
+                    './test/fixtures/ajv.min.js': './node_modules/ajv/dist/ajv.min.js'
+                },
+                options: {
+                    skipCheck: true
+                }
+
             }
+
         }
     });
 
