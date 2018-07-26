@@ -19,12 +19,18 @@ export function cred() {
     function key_info(challenge) {
         const r = {
             type: 'object',
+            required: [
+                'cred_id',
+                'issuer_id'
+            ],
+            additionalProperties: false,
             properties: {
                 cred_id: byte_array(),
                 issuer_id: { type: 'string' }
             }
         };
         if (challenge) {
+            r.required.push('challenge');
             r.properties.challenge = byte_array();
         }
         return r;
@@ -35,15 +41,34 @@ export function cred() {
                 200: key_info(true),
                 404: {
                     type: 'object',
+                    required: [
+                        'rp',
+                        'user',
+                        'challenge',
+                        'pubKeyCredParams',
+                        'timeout',
+                        'attestation'
+                    ],
+                    additionalProperties: false,
                     properties: {
                         rp: {
                             type: 'object',
+                            required: [
+                                'name'
+                            ],
+                            addtionalProperties: false,
                             properties: {
                                 name: { type: 'string' },
                             }
                         },
                         user: {
                             type: 'object',
+                            required: [
+                                'name',
+                                'displayName',
+                                'id'
+                            ],
+                            additionalProperties: false,
                             properties: {
                                 name: { type: 'string' },
                                 displayName: { type: 'string' },
@@ -55,6 +80,11 @@ export function cred() {
                             type: 'array',
                             items: {
                                 type: 'object',
+                                required: [
+                                    'type',
+                                    'alg'
+                                ],
+                                additionalProperties: false,
                                 properties: {
                                     type: {
                                         type: 'string',
@@ -65,7 +95,7 @@ export function cred() {
                             }
                         },
                         timeout: { type: 'integer' },
-                        attenstation: {
+                        attestation: {
                             type: 'string',
                             enum: [
                                 'direct',
