@@ -2,7 +2,7 @@
 import url from 'url';
 import { promisify } from 'util';
 import { fix_assertion_types } from './common.js';
-import { perk as perk_schemas } from './schemas.js';
+import { perk as perk_schemas } from './dist/schemas.js';
 
 export default async function (fastify, options) {
     options = options.perk_options || /* istanbul ignore next */ options;

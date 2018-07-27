@@ -175,7 +175,7 @@ The following routes will be added to your server. All request and response bodi
 *** The `assertion_result` is passed to the POST route handler for `/perk/`.
 *** The response is the same as described above for POST requests for `/perk/`.
 
-JSON schemas for these routes can be found in link:schemas.js[].
+JSON schemas for these routes can be found in link:dist/schemas.js[].
 
 == Installation
 

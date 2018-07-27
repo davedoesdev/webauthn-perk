@@ -221,7 +221,7 @@ BRF:2
 BRH:2
 end_of_record
 TN:
-SF:/home/david/webauthn-perk/schemas.js
+SF:/home/david/webauthn-perk/dist/schemas.js
 FN:3,byte_array
 FN:21,key_info
 FN:172,perk

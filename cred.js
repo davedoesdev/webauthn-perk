@@ -3,7 +3,7 @@ import { promisify } from 'util';
 import { Fido2Lib } from 'fido2-lib';
 import { BufferToArrayBuffer, fix_assertion_types } from './common.js';
 import fastify_secure_session from 'fastify-secure-session';
-import { cred as schemas } from './schemas.js';
+import { cred as schemas } from './dist/schemas.js';
 const default_user = 'Anonymous User';
 
 export default async function (fastify, options) {
