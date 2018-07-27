@@ -31,7 +31,7 @@ export default function (grunt) {
                 header: 'export default (function () {',
                 footer: '\nreturn this.axios; }).call({});',
                 files: {
-                    './test/fixtures/axios.min.js': './node_modules/axios/dist/axios.min.js'
+                    './dist/axios.min.js': './node_modules/axios/dist/axios.min.js'
                 },
                 options: {
                     skipCheck: true
@@ -42,7 +42,7 @@ export default function (grunt) {
                 header: 'export default (function () {',
                 footer: '\nreturn KJUR; }).call({});',
                 files: {
-                    './test/fixtures/jsrsasign-all-min.js': './node_modules/jsrsasign/lib/jsrsasign-all-min.js'
+                    './dist/jsrsasign-all-min.js': './node_modules/jsrsasign/lib/jsrsasign-all-min.js'
                 },
                 options: {
                     skipCheck: true
@@ -53,14 +53,12 @@ export default function (grunt) {
                 header: 'export default (function () {',
                 footer: '\nreturn Ajv; }).call({});',
                 files: {
-                    './test/fixtures/ajv.min.js': './node_modules/ajv/dist/ajv.min.js'
+                    './dist/ajv.min.js': './node_modules/ajv/dist/ajv.min.js'
                 },
                 options: {
                     skipCheck: true
                 }
-
             }
-
         }
     });
 
