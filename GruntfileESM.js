@@ -64,10 +64,12 @@ export default function (grunt) {
         }
     });
 
-    grunt.loadNpmTasks('grunt-eslint');
-    grunt.loadNpmTasks('grunt-exec');
-    grunt.loadNpmTasks('grunt-force-task');
     grunt.loadNpmTasks('grunt-file-wrap');
+    if ((grunt.cli.tasks.length !== 1) || (grunt.cli.tasks[0] !== 'fileWrap')) {
+        grunt.loadNpmTasks('grunt-eslint');
+        grunt.loadNpmTasks('grunt-exec');
+        grunt.loadNpmTasks('grunt-force-task');
+    }
 
     grunt.registerTask('lint', 'eslint');
 
