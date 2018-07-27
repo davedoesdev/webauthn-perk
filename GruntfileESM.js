@@ -33,7 +33,7 @@ export default function (grunt) {
                 header: 'export default (function () {',
                 footer: '\nreturn this.axios; }).call({});',
                 files: {
-                    './dist/axios.min.js': './node_modules/axios/dist/axios.min.js'
+                    './dist/axios.min.js': path.join(path.dirname(require.resolve('axios')), 'dist', 'axios.min.js')
                 },
                 options: {
                     skipCheck: true
@@ -44,7 +44,7 @@ export default function (grunt) {
                 header: 'export default (function () {',
                 footer: '\nreturn KJUR; }).call({});',
                 files: {
-                    './dist/jsrsasign-all-min.js': './node_modules/jsrsasign/lib/jsrsasign-all-min.js'
+                    './dist/jsrsasign-all-min.js': path.join(path.dirname(require.resolve('jsrsasign')), 'jsrsasign-all-min.js')
                 },
                 options: {
                     skipCheck: true
@@ -55,7 +55,7 @@ export default function (grunt) {
                 header: 'export default (function () {',
                 footer: '\nreturn Ajv; }).call({});',
                 files: {
-                    './dist/ajv.min.js': './node_modules/ajv/dist/ajv.min.js'
+                    './dist/ajv.min.js': path.join(path.dirname(require.resolve('ajv')), '..', 'dist', 'ajv.min.js')
                 },
                 options: {
                     skipCheck: true
