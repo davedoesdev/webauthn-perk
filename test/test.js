@@ -1,14 +1,16 @@
 /* eslint-env node, mocha, browser */
-/* global browser, axios, KJUR */
+/* global browser, KJUR, PerkWorkflow */
 
 import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs';
+import { Agent } from 'https';
 import { expect } from 'chai';
 import crypto from 'crypto';
 import webauthn_perk from '..';
 import mod_fastify from 'fastify';
 import fastify_static from 'fastify-static';
+import axios from 'axios';
 const readFile = fs.promises.readFile;
 const randomBytes = promisify(crypto.randomBytes);
 const port = 3000;
@@ -132,7 +134,7 @@ async function make_fastify(port, options) {
 let fastify;
 
 before(async function () {
-    for (let i = 0; i < 2; ++i) {
+    for (let i = 0; i < 3; ++i) {
         const id = (await randomBytes(64)).toString('hex');
         valid_ids.push(id);
         urls.push(`${origin}/cred/${id}/`);
@@ -550,6 +552,150 @@ describe('credentials', function () {
                 validateStatus: status => status === 400
             });
         }, `${origin}/perk/`);
+    });
+
+    it('should provide workflow object (register)', async function () {
+        const [
+            perk_url,
+            before_verify_called,
+            after_verify_called,
+            before_register_called,
+            after_register_called
+        ] = await executeAsync(async (cred_path, perk_path, audience) => {
+            // Start the workflow
+            const workflow = new (class extends PerkWorkflow {
+                async before_verify() {
+                    this.before_verify_called = true;
+                }
+
+                async after_verify() {
+                    this.after_verify_called = true;
+                }
+
+                async before_register() {
+                    this.before_register_called = true;
+                }
+
+                async after_register() {
+                    this.after_register_called = true;
+                }
+            })(cred_path, perk_path);
+            await workflow.authenticate();
+
+            // Generate JWT containing message as a claim
+            const now = Math.floor(Date.now() / 1000);
+            const jti = new Uint8Array(64);
+            window.crypto.getRandomValues(jti);
+            const jwt = KJUR.jws.JWS.sign(null, {
+                alg: 'none',
+                typ: 'JWT'
+            }, {
+                aud: audience,
+                jti: Array.from(jti).map(x => String.fromCharCode(x)).join(''),
+                iat: now,
+                nbf: now,
+                exp: now + 10 * 60, // 10 minutes
+                foo: 123456
+            });
+
+            // Sign JWT and get perk URL
+            return [
+                await workflow.perk(jwt),
+                workflow.before_verify_called,
+                workflow.after_verify_called,
+                workflow.before_register_called,
+                workflow.after_register_called
+            ];
+        }, `/cred/${valid_ids[2]}/`, '/perk/', audience);
+
+        // Present the assertion and get the perk
+        const perk_response = await axios(perk_url, {
+            httpsAgent: new Agent({
+                ca: await readFile(path.join(__dirname, 'keys', 'ca.crt'))
+            })
+        });
+
+        expect(before_verify_called).to.be.null;
+        expect(after_verify_called).to.be.null;
+        expect(before_register_called).to.be.true;
+        expect(after_register_called).to.be.true;
+
+        expect(perk_response.status).to.equal(200);
+        expect(perk_response.data.uri).to.equal(valid_ids[2]);
+        expect(perk_response.data.payload.aud).to.equal(audience);
+        expect(perk_response.data.payload.foo).to.equal(123456);
+    });
+
+    it('should provide workflow object (verify)', async function () {
+        const [
+            perk_url,
+            before_verify_called,
+            after_verify_called,
+            before_register_called,
+            after_register_called
+        ] = await executeAsync(async (cred_path, perk_path, audience) => {
+            // Start the workflow
+            const workflow = new (class extends PerkWorkflow {
+                async before_verify() {
+                    this.before_verify_called = true;
+                }
+
+                async after_verify() {
+                    this.after_verify_called = true;
+                }
+
+                async before_register() {
+                    this.before_register_called = true;
+                }
+
+                async after_register() {
+                    this.after_register_called = true;
+                }
+            })(cred_path, perk_path);
+            await workflow.authenticate();
+
+            // Generate JWT containing message as a claim
+            const now = Math.floor(Date.now() / 1000);
+            const jti = new Uint8Array(64);
+            window.crypto.getRandomValues(jti);
+            const jwt = KJUR.jws.JWS.sign(null, {
+                alg: 'none',
+                typ: 'JWT'
+            }, {
+                aud: audience,
+                jti: Array.from(jti).map(x => String.fromCharCode(x)).join(''),
+                iat: now,
+                nbf: now,
+                exp: now + 10 * 60, // 10 minutes
+                foo: 4574321
+            });
+
+            // Sign JWT and get perk URL
+            return [
+                await workflow.perk(jwt),
+                workflow.before_verify_called,
+                workflow.after_verify_called,
+                workflow.before_register_called,
+                workflow.after_register_called
+            ];
+        }, `/cred/${valid_ids[2]}/`, '/perk/', audience);
+
+        // Present the assertion and get the perk
+        const perk_response = await axios(perk_url, {
+            httpsAgent: new Agent({
+                ca: await readFile(path.join(__dirname, 'keys', 'ca.crt'))
+            })
+        });
+
+        expect(before_verify_called).to.be.true;
+        expect(after_verify_called).to.be.true;
+        expect(before_register_called).to.be.null;
+        expect(after_register_called).to.be.null;
+
+        expect(perk_response.status).to.equal(200);
+        expect(perk_response.data.uri).to.equal(valid_ids[2]);
+        expect(perk_response.data.payload.aud).to.equal(audience);
+        expect(perk_response.data.payload.foo).to.equal(4574321);
     });
 
     it('should throw missing handler error', async function () {

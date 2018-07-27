@@ -22,7 +22,7 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>11/11</span>
+        <span class='fraction'>13/13</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
@@ -32,12 +32,12 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Functions</span>
-        <span class='fraction'>4/4</span>
+        <span class='fraction'>3/3</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>11/11</span>
+        <span class='fraction'>13/13</span>
       </div>
     </div>
     <p class="quiet">
@@ -248,26 +248,16 @@
 <a name='L200'></a><a href='#L200'>200</a>
 <a name='L201'></a><a href='#L201'>201</a>
 <a name='L202'></a><a href='#L202'>202</a>
-<a name='L203'></a><a href='#L203'>203</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L203'></a><a href='#L203'>203</a>
+<a name='L204'></a><a href='#L204'>204</a>
+<a name='L205'></a><a href='#L205'>205</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">40x</span>
-<span class="cline-any cline-yes">40x</span>
-<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">40x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -277,16 +267,30 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -467,129 +471,104 @@ function byte_array(nullable) {
     };
 }
 &nbsp;
-export function cred() {
-    function key_info(challenge) {
-        const r = {
-            type: 'object',
-            required: [
-                'cred_id',
-                'issuer_id'
-            ],
-            additionalProperties: false,
-            properties: {
-                cred_id: byte_array(),
-                issuer_id: { type: 'string' }
-            }
-        };
-        if (challenge) {
-            r.required.push('challenge');
-            r.properties.challenge = byte_array();
-        }
-        return r;
-    }
-    return {
-        get: {
-            response: {
-                200: key_info(true),
-                404: {
-                    type: 'object',
-                    required: [
-                        'rp',
-                        'user',
-                        'challenge',
-                        'pubKeyCredParams',
-                        'timeout',
-                        'attestation'
-                    ],
-                    additionalProperties: false,
-                    properties: {
-                        rp: {
-                            type: 'object',
-                            required: [
-                                'name'
-                            ],
-                            addtionalProperties: false,
-                            properties: {
-                                name: { type: 'string' },
-                            }
-                        },
-                        user: {
-                            type: 'object',
-                            required: [
-                                'name',
-                                'displayName',
-                                'id'
-                            ],
-                            additionalProperties: false,
-                            properties: {
-                                name: { type: 'string' },
-                                displayName: { type: 'string' },
-                                id: { type: 'string' }
-                            }
-                        },
-                        challenge: byte_array(false),
-                        pubKeyCredParams: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                required: [
-                                    'type',
-                                    'alg'
-                                ],
-                                additionalProperties: false,
-                                properties: {
-                                    type: {
-                                        type: 'string',
-                                        const: 'publicKey'
-                                    },
-                                    alg: { type: 'integer' }
-                                }
-                            }
-                        },
-                        timeout: { type: 'integer' },
-                        attestation: {
-                            type: 'string',
-                            enum: [
-                                'direct',
-                                'indirect',
-                                'none'
-                            ]
-                        }
-                    }
-                }
-            }
-        },
+const non_nullable_byte_array = byte_array(false);
+const nullable_byte_array = byte_array(true);
 &nbsp;
-        put: {
-            body: {
+function key_info(challenge) {
+    const r = {
+        type: 'object',
+        required: [
+            'cred_id',
+            'issuer_id'
+        ],
+        additionalProperties: false,
+        properties: {
+            cred_id: non_nullable_byte_array,
+            issuer_id: { type: 'string' }
+        }
+    };
+    if (challenge) {
+        r.required.push('challenge');
+        r.properties.challenge = non_nullable_byte_array;
+    }
+    return r;
+}
+&nbsp;
+export const cred = {
+    get: {
+        response: {
+            200: key_info(true),
+            404: {
                 type: 'object',
                 required: [
-                    'id',
-                    'response'
+                    'rp',
+                    'user',
+                    'challenge',
+                    'pubKeyCredParams',
+                    'timeout',
+                    'attestation'
                 ],
                 additionalProperties: false,
                 properties: {
-                    id: { type: 'string' },
-                    response: {
+                    rp: {
                         type: 'object',
                         required: [
-                            'attestationObject',
-                            'clientDataJSON'
+                            'name'
+                        ],
+                        addtionalProperties: false,
+                        properties: {
+                            name: { type: 'string' },
+                        }
+                    },
+                    user: {
+                        type: 'object',
+                        required: [
+                            'name',
+                            'displayName',
+                            'id'
                         ],
                         additionalProperties: false,
                         properties: {
-                            attestationObject: byte_array(false),
-                            clientDataJSON: { type: 'string' }
+                            name: { type: 'string' },
+                            displayName: { type: 'string' },
+                            id: { type: 'string' }
                         }
+                    },
+                    challenge: non_nullable_byte_array,
+                    pubKeyCredParams: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            required: [
+                                'type',
+                                'alg'
+                            ],
+                            additionalProperties: false,
+                            properties: {
+                                type: {
+                                    type: 'string',
+                                    const: 'public-key'
+                                },
+                                alg: { type: 'integer' }
+                            }
+                        }
+                    },
+                    timeout: { type: 'integer' },
+                    attestation: {
+                        type: 'string',
+                        enum: [
+                            'direct',
+                            'indirect',
+                            'none'
+                        ]
                     }
                 }
-            },
-            response: {
-                200: key_info(false)
             }
-        },
+        }
+    },
 &nbsp;
-        post: {
+    put: {
+        body: {
             type: 'object',
             required: [
                 'id',
@@ -601,23 +580,50 @@ export function cred() {
                 response: {
                     type: 'object',
                     required: [
-                        'authenticatorData',
-                        'clientDataJSON',
-                        'signature',
-                        'userHandle'
+                        'attestationObject',
+                        'clientDataJSON'
                     ],
                     additionalProperties: false,
                     properties: {
-                        authenticatorData: byte_array(false),
-                        clientDataJSON: { type: 'string' },
-                        signature: byte_array(false),
-                        userHandle: byte_array(true)
+                        attestationObject: non_nullable_byte_array,
+                        clientDataJSON: { type: 'string' }
                     }
                 }
             }
+        },
+        response: {
+            200: key_info(false)
         }
-    };
-}
+    },
+&nbsp;
+    post: {
+        type: 'object',
+        required: [
+            'id',
+            'response'
+        ],
+        additionalProperties: false,
+        properties: {
+            id: { type: 'string' },
+            response: {
+                type: 'object',
+                required: [
+                    'authenticatorData',
+                    'clientDataJSON',
+                    'signature',
+                    'userHandle'
+                ],
+                additionalProperties: false,
+                properties: {
+                    authenticatorData: non_nullable_byte_array,
+                    clientDataJSON: { type: 'string' },
+                    signature: non_nullable_byte_array,
+                    userHandle: nullable_byte_array
+                }
+            }
+        }
+    }
+};
 &nbsp;
 export function perk(options) {
     return {
@@ -645,7 +651,7 @@ export function perk(options) {
                 additionalProperties: false,
                 properties: {
                     issuer_id: { type: 'string' },
-                    assertion: cred().post
+                    assertion: cred.post
                 }
             },
             response: options.response_schema
@@ -658,7 +664,7 @@ export function perk(options) {
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="https://istanbul.js.org/" target="_blank">istanbul</a> at Thu Jul 26 2018 21:08:53 GMT+0100 (British Summer Time)
+  generated by <a href="https://istanbul.js.org/" target="_blank">istanbul</a> at Fri Jul 27 2018 07:21:17 GMT+0100 (British Summer Time)
 </div>
 </div>
 <script src="prettify.js"></script>
