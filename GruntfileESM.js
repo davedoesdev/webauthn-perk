@@ -1,6 +1,8 @@
 /*eslint-env node */
 
 import path from 'path';
+import load_grunt_tasks from 'load-grunt-tasks';
+
 const mod_path = path.join('.', 'node_modules');
 const bin_path = path.join(mod_path, '.bin');
 const nyc_path = path.join(bin_path, 'nyc');
@@ -62,7 +64,11 @@ export default function (grunt) {
         }
     });
 
-    grunt.loadNpmTasks('grunt-file-wrap');
+    load_grunt_tasks(grunt, {
+        pattern: 'grunt-file-wrap',
+        requireResolution: true
+    });
+
     if ((grunt.cli.tasks.length !== 1) || (grunt.cli.tasks[0] !== 'fileWrap')) {
         grunt.loadNpmTasks('grunt-eslint');
         grunt.loadNpmTasks('grunt-exec');
