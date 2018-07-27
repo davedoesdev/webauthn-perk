@@ -1,7 +1,7 @@
 /* eslint-env browser */
 
-import { PerkWorkflow } from './perk-workflow.js';
-import KJUR from './jsrsasign-all-min.js';
+import { PerkWorkflow } from './dist/perk-workflow.js';
+import KJUR from './dist/jsrsasign-all-min.js';
 
 class ExamplePerkWorkflow extends PerkWorkflow {
     async before_verify() {

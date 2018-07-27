@@ -54,6 +54,12 @@ const randomBytes = promisify(crypto.randomBytes);
         prefix: `/${id}`
     });
 
+    fastify.register(fastify_static, {
+        root: path.join(__dirname, '..', 'dist'),
+        prefix: `/${id}/dist`,
+        decorateReply: false
+    });
+
     await fastify.listen(3000);
 
     console.log(`Please visit https://localhost:3000/${id}/example.html`);

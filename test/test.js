@@ -120,6 +120,12 @@ async function make_fastify(port, options) {
         prefix: '/test'
     });
 
+    fastify.register(fastify_static, {
+        root: path.join(__dirname, '..', 'dist'),
+        prefix: '/test/dist',
+        decorateReply: false
+    });
+
     await fastify.listen(port);
 
     browser.on('end', function () {
