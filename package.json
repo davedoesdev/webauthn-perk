@@ -1,7 +1,7 @@
 {
   "name": "@davedoesdev/webauthn-perk",
   "description": "Claims-based Web Authentication",
-  "version": "0.0.11",
+  "version": "1.0.0",
   "homepage": "https://gitlab.com/davedoesdev/webauthn-perk",
   "author": {
     "name": "David Halls",
