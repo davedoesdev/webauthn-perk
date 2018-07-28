@@ -106,12 +106,14 @@ fastify.register(webauthn_perk, {
         },
         perk_options: {
             prefix: '/perk', // Well-known path for presenting assertions is this plus /
-            assertion_expectations: {
-                origin: `https://${request.headers.host}`,
-                factor: 'either',
-                prevCounter: 0
-                // See https://apowers313.github.io/fido2-lib/Fido2Lib.html#assertionResult
-                // authorize_jwt_options.complete_webauthn_token can also supply these
+            fido2_options: {
+                assertion_expectations: {
+                    origin: `https://${request.headers.host}`,
+                    factor: 'either',
+                    prevCounter: 0
+                    // See https://apowers313.github.io/fido2-lib/Fido2Lib.html#assertionResult
+                    // authorize_jwt_options.complete_webauthn_token can also supply these
+                },
             },
             handler: function (info, request, reply) {
                 // This function is called after an assertion is successfully verified.

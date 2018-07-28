@@ -6,6 +6,7 @@ import { perk as perk_schemas } from './dist/schemas.js';
 
 export default async function (fastify, options) {
     options = options.perk_options || /* istanbul ignore next */ options;
+    const fido2_options = options.fido2_options || /* istanbul ignore next */ {};
 
     const authorize = promisify((authz_token, cb) => {
         options.authz.authorize(authz_token, [], (err, payload, uri, rev, assertion_result) => {
@@ -45,7 +46,7 @@ export default async function (fastify, options) {
             prevCounter: 0,
             // not all authenticators can store user handles
             userHandle: assertion.response.userHandle
-        }, options.assertion_expectations);
+        }, fido2_options.assertion_expectations);
         const token = {
             issuer_id: request.body.issuer_id,
             assertion,
