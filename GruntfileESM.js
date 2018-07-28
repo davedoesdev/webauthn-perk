@@ -13,9 +13,10 @@ export default function (grunt) {
             target: [
                 '*.js',
                 'test/**/*.js',
-                '!test/fixtures/axios.min.js',
-                '!test/fixtures/jsrsasign-all-min.js',
-                '!test/fixtures/ajv.min.js'
+                'dist/**/*.js',
+                '!dist/axios.min.js',
+                '!dist/jsrsasign-all-min.js',
+                '!dist/ajv.min.js'
             ]
         },
 
