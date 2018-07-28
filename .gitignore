@@ -1,7 +1,6 @@
 /node_modules
 /errorShots
 /test/store
-/secret-session-key
 /.nyc_output
 /dist/axios.min.js
 /dist/jsrsasign-all-min.js
