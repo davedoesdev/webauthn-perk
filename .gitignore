@@ -2,6 +2,6 @@
 /errorShots
 /test/store
 /.nyc_output
-/dist/axios.min.js
+/dist/axios.js
 /dist/jsrsasign-all-min.js
-/dist/ajv.min.js
+/dist/ajv.bundle.js

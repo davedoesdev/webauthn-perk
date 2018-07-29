@@ -1,7 +1,7 @@
 /* eslint-env browser */
 
-import axios from './axios.min.js';
-import Ajv from './ajv.min.js';
+import axios from './axios.js';
+import Ajv from './ajv.bundle.js';
 import { cred as schemas } from './schemas.js';
 
 const ajv = new Ajv();
@@ -143,3 +143,5 @@ export class PerkWorkflow {
     async before_register() {}
     async after_register() {}
 }
+
+export { axios, Ajv };
