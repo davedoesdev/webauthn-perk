@@ -5,9 +5,15 @@ import Ajv from './ajv.bundle.js';
 import { cred as schemas } from './schemas.js';
 
 const ajv = new Ajv();
-schemas.get.response[200] = ajv.compile(schemas.get.response[200]);
-schemas.get.response[404] = ajv.compile(schemas.get.response[404]);
-schemas.put.response[200] = ajv.compile(schemas.put.response[200]);
+const response_schemas = {
+    get: {
+        200: ajv.compile(schemas.get.response[200]),
+        404: ajv.compile(schemas.get.response[404])
+    },
+    put: {
+        200: ajv.compile(schemas.put.response[200])
+    }
+};
 
 function validate(schema, response) {
     if (!schema(response.data)) {
@@ -25,7 +31,7 @@ export class PerkWorkflow {
         const get_response = await axios(this.cred_path, {
             validateStatus: status => status === 404 || status === 200
         });
-        validate(schemas.get.response[get_response.status], get_response);
+        validate(response_schemas.get[get_response.status], get_response);
 
         this.get_result = get_response.data;
         return get_response.status === 200;
@@ -50,7 +56,7 @@ export class PerkWorkflow {
         };
 
         const put_response = await axios.put(this.cred_path, attestation_result);
-        validate(schemas.put.response[put_response.status], put_response);
+        validate(response_schemas.put[put_response.status], put_response);
 
         ({ cred_id: this.cred_id, issuer_id: this.issuer_id } = put_response.data);
 
