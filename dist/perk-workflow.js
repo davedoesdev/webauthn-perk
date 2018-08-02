@@ -63,16 +63,19 @@ export class PerkWorkflow {
         this.cred_id = Uint8Array.from(this.cred_id);
     }
 
-    async verify() {
+    unpack_result() {
         // Unpack the IDs and challenge
         let challenge;
         ({ cred_id: this.cred_id, issuer_id: this.issuer_id, challenge } = this.get_result);
         this.cred_id = Uint8Array.from(this.cred_id);
+        return challenge;
+    }
 
+    async verify() {
         // Sign challenge with credential
         const assertion = await navigator.credentials.get({
             publicKey: {
-                challenge: Uint8Array.from(challenge),
+                challenge: Uint8Array.from(this.unpack_result()),
                 allowCredentials: [{
                     id: this.cred_id,
                     type: 'public-key'
