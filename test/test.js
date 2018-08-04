@@ -585,7 +585,7 @@ describe('credentials', function () {
                 async after_register() {
                     this.after_register_called = true;
                 }
-            })(cred_path, perk_path);
+            })(axios, cred_path, perk_path);
             await workflow.authenticate();
 
             // Generate JWT containing message as a claim
@@ -657,7 +657,7 @@ describe('credentials', function () {
                 async after_register() {
                     this.after_register_called = true;
                 }
-            })(cred_path, perk_path);
+            })(axios, cred_path, perk_path);
             await workflow.authenticate();
 
             // Generate JWT containing message as a claim

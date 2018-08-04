@@ -6,6 +6,7 @@ import load_grunt_tasks from 'load-grunt-tasks';
 const mod_path = path.join('.', 'node_modules');
 const bin_path = path.join(mod_path, '.bin');
 const nyc_path = path.join(bin_path, 'nyc');
+const wdio_path = path.join(bin_path, 'wdio');
 
 export default function (grunt) {
     grunt.initConfig({
@@ -21,10 +22,10 @@ export default function (grunt) {
         },
 
         exec: {
-            test: 'node -r esm ./node_modules/.bin/wdio',
+            test: `node -r esm ${wdio_path}`,
             wdio_cleanup: './test/wdio_cleanup.sh',
 
-            cover: `${nyc_path} --require esm -x wdio.conf.js -x 'test/**' ./node_modules/.bin/wdio`,
+            cover: `${nyc_path} --require esm -x wdio.conf.js -x 'test/**' ${wdio_path}`,
             cover_report: `${nyc_path} report -r lcov`,
             cover_check: `${nyc_path} check-coverage --statements 100 --branches 100 --functions 100 --lines 100`
         },

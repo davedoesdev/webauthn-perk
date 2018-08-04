@@ -1,6 +1,5 @@
 /* eslint-env browser */
 
-import axios from './axios.js';
 import Ajv from './ajv.bundle.js';
 import { cred as schemas } from './schemas.js';
 
@@ -22,13 +21,14 @@ function validate(schema, response) {
 }
 
 export class PerkWorkflow {
-    constructor(cred_path, perk_path) {
+    constructor(axios, cred_path, perk_path) {
+        this.axios = axios;
         this.cred_path = cred_path;
         this.perk_path = perk_path;
     }
 
     async check_registration() {
-        const get_response = await axios(this.cred_path, {
+        const get_response = await this.axios.get(this.cred_path, {
             validateStatus: status => status === 404 || status === 200
         });
         validate(response_schemas.get[get_response.status], get_response);
@@ -55,7 +55,7 @@ export class PerkWorkflow {
             }
         };
 
-        const put_response = await axios.put(this.cred_path, attestation_result);
+        const put_response = await this.axios.put(this.cred_path, attestation_result);
         validate(response_schemas.put[put_response.status], put_response);
 
         ({ cred_id: this.cred_id, issuer_id: this.issuer_id } = put_response.data);
@@ -93,7 +93,7 @@ export class PerkWorkflow {
                 userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
             }
         };
-        await axios.post(this.cred_path, assertion_result);
+        await this.axios.post(this.cred_path, assertion_result);
     }
 
     async perk(jwt) {
@@ -153,4 +153,4 @@ export class PerkWorkflow {
     async after_register() {}
 }
 
-export { axios, Ajv };
+export { Ajv };

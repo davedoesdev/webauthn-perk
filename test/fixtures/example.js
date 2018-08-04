@@ -1,7 +1,8 @@
 /* eslint-env browser */
 
-import { PerkWorkflow } from './dist/perk-workflow.js';
+import axios from './dist/axios.js';
 import KJUR from './dist/jsrsasign-all-min.js';
+import { PerkWorkflow } from './dist/perk-workflow.js';
 
 class ExamplePerkWorkflow extends PerkWorkflow {
     async before_verify() {
@@ -39,7 +40,7 @@ window.addEventListener('load', async function () {
         const id = parts[parts.length - 2];
 
         // Start the workflow
-        const workflow = new ExamplePerkWorkflow(`/cred/${id}/`, '/perk/');
+        const workflow = new ExamplePerkWorkflow(axios, `/cred/${id}/`, '/perk/');
         await workflow.authenticate();
 
         // Generate assertions
