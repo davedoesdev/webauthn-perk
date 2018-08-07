@@ -23,10 +23,15 @@ Perk pattern (thanks to https://github.com/emlun[Emil Lundberg] for https://gith
 
 1. Run link:test/example.js[] on your server (`node -r esm test/example.js`).
 
-2. Visit the URL it displays in your WebAuthn-supporting browser. The source to
-   this page is in link:test/fixtures/example.html[] and link:test/fixtures/example.js[].
-   Either click through the certificate warnings or add link:test/keys/ca.crt[]
-   to your browser's trusted certificate authorities.
+2. Visit the URL it displays in your WebAuthn-supporting browser.
+
+  * Either click through the certificate warnings or add link:test/keys/ca.crt[]
+    to your browser's trusted certificate authorities.
+
+  * The source to this page is in link:test/fixtures/example.html[] and
+    link:test/fixtures/example.js[]. They make use of a utility class in
+    link:dist/perk-workflow.js[] which calls the Web Authentication API and
+    communicates with the server. You can re-use this in your projects.
 
 3. Use your security token to register or authenticate.
 

@@ -37,7 +37,7 @@
   "dependencies": {
     "ajv": "^6.5.2",
     "authorize-jwt": "^5.4.0",
-    "esm": "^3.0.72",
+    "esm": "^3.0.74",
     "fastify-secure-session": "^0.4.3",
     "fido2-lib": "^2.1.1",
     "grunt": "^1.0.3",
@@ -48,8 +48,8 @@
   },
   "devDependencies": {
     "chai": "^4.1.2",
-    "eslint": "^5.0.0",
-    "fastify": "^1.7.0",
+    "eslint": "^5.3.0",
+    "fastify": "^1.9.0",
     "fastify-static": "^0.12.0",
     "grunt-eslint": "^21.0.0",
     "grunt-exec": "^3.0.0",
@@ -57,9 +57,9 @@
     "mocha": "^5.2.0",
     "nyc": "^12.0.2",
     "wdio-firefox-profile-service": "^0.1.2",
-    "wdio-mocha-framework": "^0.6.1",
+    "wdio-mocha-framework": "^0.6.2",
     "wdio-selenium-standalone-service": "0.0.10",
-    "wdio-spec-reporter": "^0.1.4",
+    "wdio-spec-reporter": "^0.1.5",
     "webdriverio": "^4.13.1"
   },
   "engines": {
