@@ -1,5 +1,5 @@
 /* eslint-env node, mocha, browser */
-/* global browser, KJUR, PerkWorkflow */
+/* global browser, PerkWorkflow, KJUR */
 
 import { promisify } from 'util';
 import path from 'path';
@@ -585,7 +585,7 @@ describe('credentials', function () {
                 async after_register() {
                     this.after_register_called = true;
                 }
-            })(axios, cred_path, perk_path);
+            })({ cred_path, perk_path });
             await workflow.authenticate();
 
             // Generate JWT containing message as a claim
@@ -657,7 +657,7 @@ describe('credentials', function () {
                 async after_register() {
                     this.after_register_called = true;
                 }
-            })(axios, cred_path, perk_path);
+            })({ cred_path, perk_path });
             await workflow.authenticate();
 
             // Generate JWT containing message as a claim

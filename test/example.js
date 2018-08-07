@@ -51,7 +51,8 @@ const randomBytes = promisify(crypto.randomBytes);
 
     fastify.register(fastify_static, {
         root: path.join(__dirname, 'fixtures'),
-        prefix: `/${id}`
+        prefix: `/${id}`,
+        index: 'example.html'
     });
 
     fastify.register(fastify_static, {
@@ -62,5 +63,5 @@ const randomBytes = promisify(crypto.randomBytes);
 
     await fastify.listen(3000);
 
-    console.log(`Please visit https://localhost:3000/${id}/example.html`);
+    console.log(`Please visit https://localhost:3000/${id}/`);
 })();

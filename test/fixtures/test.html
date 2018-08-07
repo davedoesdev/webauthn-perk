@@ -1,12 +1,12 @@
 <html>
     <head>
         <script type="module">
+            import { PerkWorkflow } from './dist/perk-workflow.js';
             import axios from './dist/axios.js';
             import KJUR from './dist/jsrsasign-all-min.js';
-            import { PerkWorkflow } from './dist/perk-workflow.js';
+            window.PerkWorkflow = PerkWorkflow;
             window.axios = axios;
             window.KJUR = KJUR;
-            window.PerkWorkflow = PerkWorkflow;
         </script>
     </head>
     <body></body>
