@@ -31,7 +31,8 @@ Perk pattern (thanks to https://github.com/emlun[Emil Lundberg] for https://gith
   * The source to this page is in link:test/fixtures/example.html[] and
     link:test/fixtures/example.js[]. They make use of a utility class in
     link:dist/perk-workflow.js[] which calls the Web Authentication API and
-    communicates with the server. You can re-use this in your projects.
+    communicates with the server. You can re-use this in your projects --
+    there's documentation <<perk-workflow,below>>.
 
 3. Use your security token to register or authenticate.
 
@@ -183,6 +184,105 @@ The following routes will be added to your server. All request and response bodi
 *** The response is the same as described above for POST requests for `/perk/`.
 
 JSON schemas for these routes can be found in link:dist/schemas.js[].
+
+[[perk-workflow]]
+== Browser Utility Class
+
+=== Description
+
+link:dist/perk-workflow.js[] contains a class, `PerkWorkflow`, which you can use from your browser-side
+Javascript to call the Web Authentication API and communicate with your server.
+
+The script is an ES2015 module so you should include it using `<script type="mmodule">`. It exports
+the `PerkWorkflow` class.
+
+If you construct a `PerkWorkflow` object with no arguments, it tries to guess your server's routes
+from the URL of the page. If your page is at:
+
+====
+https://example.com/a/b/c/unguessableid
+====
+
+or
+
+====
+https://example.com/a/b/c/unguessableid/
+====
+
+then `PerkWorkflow` will use the following URLs for making credential and perk requests:
+
+====
+https://example.com/a/b/c/cred/unguessableid/ +
+https://example.com/a/b/c/perk/
+====
+
+You can override this behaviour by passing an object containing `cred_path` and/or `perk_path`
+properties to ``PerkWorkflow``'s constructor.
+
+=== authenticate()
+
+Once you've made a `workflow = new PerkWorkflow()`, call its `authenticate()` method to register
+the user's security token against `unguessableid` on your server:
+
+[source,javascript]
+----
+await workflow.authenticate();
+----
+
+If a token has already been registered against `unguessableid`, then `authenticate()` will verify
+the registered token is the same as the user's.
+
+As `authenticate()` proceeds, the following methods will be called. You can customise each stage
+of the authentication process by ``extend``ing the `PerkWorkflow` class and overriding one or more
+of the methods.
+
+async before_register()::
++
+  * Called when no security token has been registered against the credential ID (`unguessableid` here).
+  * Called before the browser's Web Authentication API is invoked to sign the registration challenge
+    received from the server.
++
+You might display a prompt to ask the user to register their token, for example.
+
+async after_register()::
++
+  * Called after the Web Authentication API has generated a signature using the user's security token.
+  * Called after the signature is sent to the server in order to register the token against the
+    credential ID.
++
+You might remove any registration prompt displayed, for example.
+
+async before_verify()::
++
+  * Called when a security token has already been registered against the credential ID.
+  * Called before the browser's Web Authentication API is invoked to sign the verification challenge
+    received from the server.
++
+You might display a prompt to ask the user to verify their token, for example.
+
+async after_verify()::
++
+  * Called after the Web Authentication API has generated a signature using the user's security token.
+  * Called after the signature is sent to the server in order to verify the user's token is the
+    same as the one registered against the credential ID.
++
+You might remove any verification prompt displayed, for example.
+
+Once `await workflow.authenticate()` returns, registration or verification of the user's security
+token against `unguessableid` is complete. If an error occurs, `authenticate()` will throw an
+exception.
+
+=== perk(jwt)
+
+Once `workflow.authenticate()` has registered or verified the user's security token, you can call
+`workflow.perk(jwt)` to generate a perk URL containing a signed assertion.
+
+1. Make an _unsigned_ JWT using your favourite JWT library.
+2. Call `url = await workflow.perk(jwt)`, passing the unsigned JWT as the argument.
+3. Arrange for the returned `url` to be sent to the user(s) you wish to receive the perk.
+
+Please see link:test/example.js[] for an example of how to use `PerkWorkflow`. It uses
+https://github.com/kjur/jsrsasign[jsrsasign] for making JWTs.
 
 == Installation
 

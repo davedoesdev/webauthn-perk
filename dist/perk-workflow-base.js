@@ -153,10 +153,10 @@ export class PerkWorkflowBase {
         // and the issuer ID (identifying the public key)
     }
 
-    async before_verify() {}
-    async after_verify() {}
     async before_register() {}
     async after_register() {}
+    async before_verify() {}
+    async after_verify() {}
 }
 
 export { Ajv };
