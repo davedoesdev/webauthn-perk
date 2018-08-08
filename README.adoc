@@ -232,6 +232,25 @@ await workflow.authenticate();
 If a token has already been registered against `unguessableid`, then `authenticate()` will verify
 the registered token is the same as the user's.
 
+Once `await workflow.authenticate()` returns, registration or verification of the user's security
+token against `unguessableid` is complete. If an error occurs, `authenticate()` will throw an
+exception.
+
+[[perk]]
+=== perk(jwt)
+
+Once `workflow.authenticate()` has registered or verified the user's security token, you can call
+`workflow.perk(jwt)` to generate a perk URL containing a signed assertion.
+
+1. Make an _unsigned_ JWT using your favourite JWT library.
+2. Call `url = await workflow.perk(jwt)`, passing the unsigned JWT as the argument.
+3. Arrange for the returned `url` to be sent to the user(s) you wish to receive the perk.
+
+Please see link:test/example.js[] for an example of how to use `PerkWorkflow`. It uses
+https://github.com/kjur/jsrsasign[jsrsasign] for making JWTs.
+
+=== Overrides
+
 As `authenticate()` proceeds, the following methods will be called. You can customise each stage
 of the authentication process by ``extend``ing the `PerkWorkflow` class and overriding one or more
 of the methods.
@@ -268,21 +287,23 @@ async after_verify()::
 +
 You might remove any verification prompt displayed, for example.
 
-Once `await workflow.authenticate()` returns, registration or verification of the user's security
-token against `unguessableid` is complete. If an error occurs, `authenticate()` will throw an
-exception.
-
-=== perk(jwt)
-
-Once `workflow.authenticate()` has registered or verified the user's security token, you can call
-`workflow.perk(jwt)` to generate a perk URL containing a signed assertion.
-
-1. Make an _unsigned_ JWT using your favourite JWT library.
-2. Call `url = await workflow.perk(jwt)`, passing the unsigned JWT as the argument.
-3. Arrange for the returned `url` to be sent to the user(s) you wish to receive the perk.
-
-Please see link:test/example.js[] for an example of how to use `PerkWorkflow`. It uses
-https://github.com/kjur/jsrsasign[jsrsasign] for making JWTs.
+async verify()::
++
+  * Called when a security token has already been registered against the credential ID.
+  * The implementation in `PerkWorkflow` calls the Web Authentication API to sign a verification
+    challenge received from the server and then sends the signature back to the server.
++
+To disable verification you should override like this:
++
+[source,javascript]
+----
+async verify() {
+    this.unpack_result();
+}
+----
++
+Although you won't know whether the user's token is the same as the one registered against the
+credential ID, if it isn't then your server will not successfully verify URLs returned by <<perk>>.
 
 == Installation
 
