@@ -242,7 +242,7 @@ exception.
 Once `workflow.authenticate()` has registered or verified the user's security token, you can call
 `workflow.perk(jwt)` to generate a perk URL containing a signed assertion.
 
-1. Make an _unsigned_ JWT using your favourite JWT library.
+1. Make an _unsigned_ serialized JWT using your favourite JWT library.
 2. Call `url = await workflow.perk(jwt)`, passing the unsigned JWT as the argument.
 3. Arrange for the returned `url` to be sent to the user(s) you wish to receive the perk.
 
