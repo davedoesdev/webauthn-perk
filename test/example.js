@@ -24,7 +24,7 @@ const randomBytes = promisify(crypto.randomBytes);
 
     fastify.register(webauthn_perk, {
         authorize_jwt_options: {
-            db_dir: path.join(__dirname, 'store'),
+            db_dir: path.join(__dirname, 'store')
         },
         cred_options: {
             valid_ids: [id],
