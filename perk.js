@@ -20,7 +20,7 @@ export default async function (fastify, options) {
         }
     }, options).handler;
 
-    const schemas = perk_schemas(options);
+    const schemas = options.schemas || perk_schemas(options);
 
     fastify.get('/', { schema: schemas.get }, async (request, reply) => {
         const post_response = await fastify.inject({

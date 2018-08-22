@@ -130,7 +130,8 @@ fastify.register(webauthn_perk, {
                 // as described for the cb parameter here:
                 // https://github.com/davedoesdev/authorize-jwt#authorizejwtprototypeauthorizeauthz_token-allowed_algs-cb
                 throw new Error('missing handler');
-            }
+            },
+            response_schema: undefined, // JSON schema for handler responses
         }
     }
 });
