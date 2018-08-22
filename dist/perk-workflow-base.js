@@ -159,4 +159,4 @@ export class PerkWorkflowBase {
     async after_verify() {}
 }
 
-export { Ajv };
+export { Ajv, ajv, validate };
