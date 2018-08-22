@@ -102,7 +102,7 @@ export class PerkWorkflowBase {
         await this.options.axios.post(this.options.cred_path, assertion_result);
     }
 
-    async perk(jwt) {
+    async perk_assertion(jwt) {
         // Sign JWT
         const assertion = await navigator.credentials.get({
             publicKey: {
@@ -114,8 +114,8 @@ export class PerkWorkflowBase {
             }
         });
 
-        // Make perk URL
-        const assertion_result = {
+        // Make assertion result
+        return {
             issuer_id: this.issuer_id,
             assertion: {
                 id: assertion.id,
@@ -127,12 +127,15 @@ export class PerkWorkflowBase {
                 }
             }
         };
+    }
+
+    async perk(jwt) {
+        // Make perk URL
         const perk_url = new URL(location.href);
         perk_url.pathname = this.options.perk_path;
         const params = new URLSearchParams();
-        params.set('assertion_result', JSON.stringify(assertion_result));
+        params.set('assertion_result', JSON.stringify(await this.perk_assertion(jwt)));
         perk_url.search = params.toString();
-
         return perk_url;
     }
 
