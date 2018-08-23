@@ -26,6 +26,7 @@ export default async function (fastify, options) {
             cb(err, { pub_key, issuer_id });
         });
     });
+    const deploy = promisify(ks.deploy.bind(ks));
 
     const complete_assertion_expectations = Object.assign({
         async complete_assertion_expectations(assertion, assertion_expectations) {
@@ -112,6 +113,7 @@ export default async function (fastify, options) {
                 pub_key: cred_response.authnrData.get('credentialPublicKeyPem'),
                 cred_id: cred_id
             });
+            await deploy();
             return { cred_id, issuer_id };
         });
 
