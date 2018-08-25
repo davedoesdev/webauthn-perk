@@ -37,7 +37,7 @@ export default async function (fastify, options) {
     });
 
     fastify.post('/', { schema: schemas.post }, async (request, reply) => {
-        const assertion = fix_assertion_types(request.body.assertion);
+        const assertion = fix_assertion_types(Object.assign({}, request.body.assertion));
         // complete_webauthn_token passed to authorize-jwt can override these
         const expectations = Object.assign({
             // fido2-lib expects https
