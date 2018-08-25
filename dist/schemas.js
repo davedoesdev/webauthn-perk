@@ -141,28 +141,30 @@ export const cred = {
     },
 
     post: {
-        type: 'object',
-        required: [
-            'id',
-            'response'
-        ],
-        additionalProperties: false,
-        properties: {
-            id: { type: 'string' },
-            response: {
-                type: 'object',
-                required: [
-                    'authenticatorData',
-                    'clientDataJSON',
-                    'signature',
-                    'userHandle'
-                ],
-                additionalProperties: false,
-                properties: {
-                    authenticatorData: non_nullable_byte_array,
-                    clientDataJSON: { type: 'string' },
-                    signature: non_nullable_byte_array,
-                    userHandle: nullable_byte_array
+        body: {
+            type: 'object',
+            required: [
+                'id',
+                'response'
+            ],
+            additionalProperties: false,
+            properties: {
+                id: { type: 'string' },
+                response: {
+                    type: 'object',
+                    required: [
+                        'authenticatorData',
+                        'clientDataJSON',
+                        'signature',
+                        'userHandle'
+                    ],
+                    additionalProperties: false,
+                    properties: {
+                        authenticatorData: non_nullable_byte_array,
+                        clientDataJSON: { type: 'string' },
+                        signature: non_nullable_byte_array,
+                        userHandle: nullable_byte_array
+                    }
                 }
             }
         }
@@ -195,7 +197,7 @@ export function perk(options) {
                 additionalProperties: false,
                 properties: {
                     issuer_id: { type: 'string' },
-                    assertion: cred.post
+                    assertion: cred.post.body
                 }
             },
             response: options.response_schema

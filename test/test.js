@@ -216,7 +216,8 @@ async function auth(url, options) {
 
 async function verify(url, options) {
     options = Object.assign({
-        valid_status: 204
+        valid_status: 204,
+        verify_url: url
     }, options);
 
     await executeAsync(async (url, options) => {
@@ -247,7 +248,7 @@ async function verify(url, options) {
             }
         };
 
-        await axios.post(url, assertion_result, {
+        await axios.post(options.verify_url, assertion_result, {
             validateStatus: status => status === options.valid_status
         });
     }, url, options);
@@ -380,10 +381,10 @@ describe('credentials', function () {
         }
     });
 
-    it('should return 400 when try to verify assertion with no public key', async function () {
+    it('should return 400 when try to verify missing assertion', async function () {
         await executeAsync(async url => {
             await axios.post(url, undefined, {
-                validateStatus: status => status === 404
+                validateStatus: status => status === 400
             });
         }, urls[0]);
     });
@@ -437,6 +438,13 @@ describe('credentials', function () {
         await verify(urls[0], {
             modify_challenge: true,
             valid_status: 400
+        });
+    });
+
+    it('should return 404 when try to verify assertion with no public key', async function () {
+        await verify(urls[0], {
+            verify_url: urls[1],
+            valid_status: 404
         });
     });
 
