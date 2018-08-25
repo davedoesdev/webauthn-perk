@@ -1,6 +1,7 @@
 /*eslint-env node */
 import url from 'url';
 import { promisify } from 'util';
+import clone from 'deep-copy';
 import { fix_assertion_types } from './common.js';
 import { perk as perk_schemas } from './dist/schemas.js';
 
@@ -37,7 +38,8 @@ export default async function (fastify, options) {
     });
 
     fastify.post('/', { schema: schemas.post }, async (request, reply) => {
-        const assertion = fix_assertion_types(Object.assign({}, request.body.assertion));
+        const assertion = clone(request.body.assertion);
+        fix_assertion_types(assertion);
         // complete_webauthn_token passed to authorize-jwt can override these
         const expectations = Object.assign({
             // fido2-lib expects https

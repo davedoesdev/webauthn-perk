@@ -15,5 +15,4 @@ export function fix_assertion_types(assertion) {
     } else {
         delete assertion.response.userHandle;
     }
-    return assertion;
 }

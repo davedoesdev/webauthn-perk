@@ -1,6 +1,7 @@
 /*eslint-env node */
 import { promisify } from 'util';
 import { Fido2Lib } from 'fido2-lib';
+import clone from 'deep-copy';
 import { BufferToArrayBuffer, fix_assertion_types } from './common.js';
 import fastify_secure_session from 'fastify-secure-session';
 import { cred as schemas } from './dist/schemas.js';
@@ -89,7 +90,7 @@ export default async function (fastify, options) {
 
         fastify.put(`/${id}/`, { schema: schemas.put }, async request => {
             check_time(request, 'attestationChallengeTime');
-            const cred = Object.assign({}, request.body);
+            const cred = clone(request.body);
             cred.id = BufferToArrayBuffer(Buffer.from(cred.id, 'base64'));
             cred.response.attestationObject = BufferToArrayBuffer(Buffer.from(cred.response.attestationObject));
             cred.response.clientDataJSON = BufferToArrayBuffer(Buffer.from(cred.response.clientDataJSON));
@@ -125,7 +126,8 @@ export default async function (fastify, options) {
                 throw err;
             }
             check_time(request, 'assertionChallengeTime');
-            const assertion = fix_assertion_types(Object.assign({}, request.body));
+            const assertion = clone(request.body);
+            fix_assertion_types(assertion);
             const userHandle = Object.assign({
                 // not all authenticators can store user handles
                 userHandle: null
