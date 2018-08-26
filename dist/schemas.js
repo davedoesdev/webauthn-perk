@@ -1,4 +1,4 @@
-/*eslint-env node */
+/*eslint-env shared-node-browser */
 
 function byte_array(nullable) {
     const types = ['array'];
