@@ -15,8 +15,8 @@ function byte_array(nullable) {
     };
 }
 
-const non_nullable_byte_array = byte_array(false);
-const nullable_byte_array = byte_array(true);
+export const non_nullable_byte_array = byte_array(false);
+export const nullable_byte_array = byte_array(true);
 
 function key_info(challenge) {
     const r = {
