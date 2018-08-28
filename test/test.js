@@ -27,6 +27,15 @@ async function make_fastify(port, options) {
                 uri: info.uri,
                 payload: info.payload
             };
+        },
+        payload_schema: {
+            type: 'object',
+            required: [
+                'foo',
+            ],
+            properties: {
+                foo: { type: 'integer' }
+            }
         }
     }, options);
 
@@ -42,7 +51,8 @@ async function make_fastify(port, options) {
         authorize_jwt_options: {
             db_dir: path.join(__dirname, 'store'),
             complete_webauthn_token: options.complete_webauthn_token,
-            on_authz: options.on_authz
+            on_authz: options.on_authz,
+            jwt_audience_uri: audience
         },
         cred_options: {
             valid_ids: options.valid_ids,
@@ -95,6 +105,7 @@ async function make_fastify(port, options) {
                     }
                 }
             },
+            payload_schema: options.payload_schema,
             handler: options.handler
         }
     };
@@ -281,7 +292,7 @@ async function perk(cred_url, perk_origin, options) {
 
         const payload = {
             aud: audience,
-            foo: 90
+            foo: options.wrong_type ? 'hello' : 90
         };
 
         const expires = new Date();
@@ -428,6 +439,15 @@ describe('credentials', function () {
         expect(data.uri).to.equal(valid_ids[0]);
         expect(data.payload.aud).to.equal(audience);
         expect(data.payload.foo).to.equal(90);
+    });
+
+    it('should verify payload against schema', async function () {
+        const [ data, status ] = await perk(urls[0], origin, {
+            wrong_type: true,
+            valid_status: 400
+        });
+        expect(status).to.equal(400);
+        expect(data.message).to.equal('data.foo should be integer');
     });
 
     it('should verify assertion so client knows it successfully registered', async function () {
@@ -793,5 +813,23 @@ describe('credentials', function () {
         await browser.url(`${origin5}/test/test.html`);
 
         expect(called).to.be.true;
+    });
+
+    it('should by default not verify payload', async function () {
+        const port6 = port + 5;
+        const id6 = (await randomBytes(64)).toString('hex');
+        await make_fastify(port6, {
+            valid_ids: [id6],
+            payload_schema: undefined
+        });
+        const origin6 = `https://localhost:${port6}`;
+        const cred_url6 = `${origin6}/cred/${id6}/`;
+
+        await browser.url(`${origin6}/test/test.html`);
+
+        await auth(cred_url6, {
+            wrong_type: true
+        });
+        await perk(cred_url6, origin6);
     });
 });

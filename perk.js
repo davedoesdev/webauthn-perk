@@ -2,8 +2,15 @@
 import url from 'url';
 import { promisify } from 'util';
 import clone from 'deep-copy';
+import Ajv from 'ajv';
 import { fix_assertion_types } from './common.js';
 import { perk as perk_schemas } from './dist/schemas.js';
+
+const ajv = new Ajv();
+
+function compile(schema) {
+    return schema ? ajv.compile(schema) : null;
+}
 
 export default async function (fastify, options) {
     options = options.perk_options || /* istanbul ignore next */ options;
@@ -22,6 +29,7 @@ export default async function (fastify, options) {
     }, options).handler;
 
     const schemas = options.schemas || perk_schemas(options);
+    const payload_schema = compile(schemas.payload || options.payload_schema);
 
     fastify.get('/', { schema: schemas.get }, async (request, reply) => {
         const post_response = await fastify.inject({
@@ -62,6 +70,11 @@ export default async function (fastify, options) {
         try {
             info = await authorize(token);
         } catch (ex) {
+            ex.statusCode = 400;
+            throw ex;
+        }
+        if (payload_schema && !payload_schema(info.payload)) {
+            const ex = new Error(ajv.errorsText(payload_schema.errors));
             ex.statusCode = 400;
             throw ex;
         }
