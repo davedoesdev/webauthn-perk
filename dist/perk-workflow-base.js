@@ -43,14 +43,17 @@ export class PerkWorkflowBase {
         return get_response.status === 200;
     }
 
-    async register() {
+    async register(signal) {
         // Unpack the options
         const attestation_options = this.get_result;
         attestation_options.challenge = Uint8Array.from(attestation_options.challenge);
         attestation_options.user.id = new TextEncoder('utf-8').encode(attestation_options.user.id);
 
         // Create a new credential and sign the challenge.
-        const cred = await navigator.credentials.create({ publicKey: attestation_options });
+        const cred = await navigator.credentials.create({
+            publicKey: attestation_options,
+            signal
+        });
 
         // Register
         const attestation_result = {
@@ -77,7 +80,7 @@ export class PerkWorkflowBase {
         return challenge;
     }
 
-    async verify() {
+    async verify(signal) {
         // Sign challenge with credential
         const assertion = await navigator.credentials.get({
             publicKey: {
@@ -86,7 +89,8 @@ export class PerkWorkflowBase {
                     id: this.cred_id,
                     type: 'public-key'
                 }]
-            }
+            },
+            signal
         });
             
         // Authenticate
@@ -102,7 +106,7 @@ export class PerkWorkflowBase {
         await this.options.axios.post(this.options.cred_path, assertion_result);
     }
 
-    async perk_assertion(jwt) {
+    async perk_assertion(jwt, signal) {
         // Sign JWT
         const assertion = await navigator.credentials.get({
             publicKey: {
@@ -111,7 +115,8 @@ export class PerkWorkflowBase {
                     id: this.cred_id,
                     type: 'public-key'
                 }]
-            }
+            },
+            signal
         });
 
         // Make assertion result
