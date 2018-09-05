@@ -42,6 +42,8 @@ export default async function (fastify, options) {
             }
         });
         reply.code(post_response.statusCode);
+        reply.type(post_response.headers['content-type']);
+        reply.serializer(x => x);
         reply.send(post_response.payload);
     });
 
