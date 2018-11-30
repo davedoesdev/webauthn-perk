@@ -1,4 +1,4 @@
-= webauthn-perk {nbsp}{nbsp}{nbsp} image:https://gitlab.com/davedoesdev/webauthn-perk/badges/master/pipeline.svg[pipeline status,link=https://gitlab.com/davedoesdev/webauthn-perk/pipelines] image:https://gitlab.com/davedoesdev/webauthn-perk/badges/master/coverage.svg[coverage report,link="https://gitlab.com/davedoesdev/webauthn-perk/builds/artifacts/master/download?job=ci"] image:http://localhost:4874/npm/v/@davedoesdev/webauthn-perk.svg?registry_uri=http://localhost:4873[NPM version,link=http://localhost:4873/#/detail/@davedoesdev/webauthn-perk]
+= webauthn-perk {nbsp}{nbsp}{nbsp} image:https://gitlab.com/davedoesdev/webauthn-perk/badges/master/pipeline.svg[pipeline status,link=https://gitlab.com/davedoesdev/webauthn-perk/pipelines] image:https://gitlab.com/davedoesdev/webauthn-perk/badges/master/coverage.svg[coverage report,link="https://gitlab.com/davedoesdev/webauthn-perk/builds/artifacts/master/download?job=ci"] image:https://img.shields.io/npm/v/webauthn-perk.svg[NPM version,link=https://www.npmjs.com/package/webauthn-perk]
 :prewrap!:
 
 https://www.fastify.io/[Fastify] plugin for supporting the https://www.w3.org/TR/webauthn/[Web Authentication]
