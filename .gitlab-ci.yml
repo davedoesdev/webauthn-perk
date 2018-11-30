@@ -2,6 +2,7 @@ image: node:11.3.0-stretch
 
 variables:
   DEBIAN_FRONTEND: noninteractive
+  DEBUG: selenium-standalone:*
 
 before_script:
   - apt-get update -qq && apt-get install -y -qq default-jre libdbus-glib-1-2 xvfb fvwm
@@ -14,7 +15,7 @@ ci:
   script:
     # gitlab images run as root in container
     - npm install --unsafe-perm
-    - xvfb-run bash -c 'fvwm& npm run ci'
+    - xvfb-run bash -c 'fvwm& npm run ci' || (cat /tmp/selenium-standalone.txt; exit 1)
   coverage: '/^All files[^\d]*(\d+[.\d]*)/'
   artifacts:
     name: coverage

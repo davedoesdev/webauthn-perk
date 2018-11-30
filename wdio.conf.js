@@ -140,6 +140,8 @@ export const config = {
         'security.webauth.webauthn_enable_usbtoken': process.env.CI !== 'true'
     },
 
+    seleniumLogs: '/tmp',
+
     //
     // =====
     // Hooks
