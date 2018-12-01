@@ -15,9 +15,6 @@
   "bugs": {
     "url": "https://gitlab.com/davedoesdev/webauthn-perk/issues"
   },
-  "publishConfig": {
-    "registry": "http://localhost:4873"
-  },
   "main": "index.js",
   "module": "plugin.js",
   "browser": "dist/perk-workflow.js",
