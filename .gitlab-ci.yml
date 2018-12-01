@@ -5,7 +5,7 @@ variables:
   DEBUG: selenium-standalone:*
 
 before_script:
-  - apt-get update -qq && apt-get install -y -qq default-jre libdbus-glib-1-2 xvfb fvwm net-tools
+  - apt-get update -qq && apt-get install -y -qq default-jre libdbus-glib-1-2 xvfb fvwm
   - java -version
   - wget -O - 'https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-GB' | tar -xjC /opt
   - ln -s /opt/firefox/firefox /usr/local/bin
@@ -15,7 +15,7 @@ ci:
   script:
     # gitlab images run as root in container
     - npm install --unsafe-perm
-    - xvfb-run bash -c 'fvwm& npm run ci' || (netstat -a; cat /tmp/selenium-standalone.txt; exit 1)
+    - xvfb-run bash -c 'fvwm& npm run ci'
   coverage: '/^All files[^\d]*(\d+[.\d]*)/'
   artifacts:
     name: coverage
