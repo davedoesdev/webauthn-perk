@@ -1,7 +1,7 @@
 {
   "name": "webauthn-perk",
   "description": "Claims-based Web Authentication",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "homepage": "https://gitlab.com/davedoesdev/webauthn-perk",
   "author": {
     "name": "David Halls",
@@ -63,5 +63,5 @@
   "engines": {
     "node": ">= 10"
   },
-  "license": "UNLICENSED"
+  "license": "MIT"
 }
