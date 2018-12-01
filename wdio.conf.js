@@ -142,7 +142,7 @@ export const config = {
 
     seleniumArgs: {
         spawnOptions: { stdio: 'inherit' },
-        seleniumArgs: [ '--max-threads=200' ]
+        seleniumArgs: [ '-max-threads', '200' ]
     },
 
     //
