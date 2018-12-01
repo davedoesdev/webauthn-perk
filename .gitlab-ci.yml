@@ -15,7 +15,7 @@ ci:
   script:
     # gitlab images run as root in container
     - npm install --unsafe-perm
-    - xvfb-run bash -c 'fvwm& npm run ci' || (cat /tmp/selenium-standalone.txt; exit 1)
+    - xvfb-run bash -c 'fvwm& npm run ci' || (netstat -a; cat /tmp/selenium-standalone.txt; exit 1)
   coverage: '/^All files[^\d]*(\d+[.\d]*)/'
   artifacts:
     name: coverage
