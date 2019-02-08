@@ -1,6 +1,6 @@
 /*eslint-env node */
 import { promisify } from 'util';
-import { Fido2Lib } from 'fido2-lib';
+import { Fido2Lib } from '@davedoesdev/fido2-lib';
 import clone from 'deep-copy';
 import { BufferToArrayBuffer, fix_assertion_types } from './common.js';
 import fastify_secure_session from 'fastify-secure-session';
