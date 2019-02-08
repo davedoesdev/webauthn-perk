@@ -1,7 +1,7 @@
 {
   "name": "webauthn-perk",
   "description": "Claims-based Web Authentication",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "homepage": "https://gitlab.com/davedoesdev/webauthn-perk",
   "author": {
     "name": "David Halls",
@@ -32,13 +32,13 @@
     "fastify"
   ],
   "dependencies": {
-    "ajv": "^6.6.1",
-    "authorize-jwt": "^5.5.2",
+    "ajv": "^6.8.1",
+    "authorize-jwt": "^5.5.3",
     "axios": "^0.18.0",
     "deep-copy": "^1.4.2",
     "esm": "^3.0.84",
     "fastify-secure-session": "^0.4.3",
-    "fido2-lib": "^2.1.1",
+    "@davedoesdev/fido2-lib": "^2.4.0",
     "grunt": "^1.0.3",
     "grunt-file-wrap": "0.0.2",
     "jsrsasign": "^8.0.12",
