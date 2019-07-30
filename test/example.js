@@ -28,9 +28,6 @@ const randomBytes = promisify(crypto.randomBytes);
         },
         cred_options: {
             valid_ids: [id],
-            secure_session_options: {
-                key: await readFile(path.join(__dirname, 'secret-session-key'))
-            },
             fido2_options: {
                 new_options: {
                     attestation: 'none'

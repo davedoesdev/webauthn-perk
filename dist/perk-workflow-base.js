@@ -40,6 +40,9 @@ export class PerkWorkflowBase {
         validate(response_schemas.get[get_response.status], get_response);
 
         this.get_result = get_response.data;
+        this.signed_challenge = this.get_result.signed_challenge;
+        delete this.get_result.signed_challenge;
+
         return get_response.status === 200;
     }
 
@@ -61,7 +64,8 @@ export class PerkWorkflowBase {
             response: {
                 attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
                 clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
-            }
+            },
+            signed_challenge: this.signed_challenge
         };
 
         const put_response = await this.options.axios.put(this.options.cred_path, attestation_result);
@@ -101,7 +105,8 @@ export class PerkWorkflowBase {
                 clientDataJSON: new TextDecoder('utf-8').decode(assertion.response.clientDataJSON),
                 signature: Array.from(new Uint8Array(assertion.response.signature)),
                 userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
-            }
+            },
+            signed_challenge: this.signed_challenge
         };
         await this.options.axios.post(this.options.cred_path, assertion_result);
     }

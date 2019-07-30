@@ -56,9 +56,6 @@ async function make_fastify(port, options) {
         },
         cred_options: {
             valid_ids: options.valid_ids,
-            secure_session_options: {
-                key: await readFile(path.join(__dirname, 'secret-session-key'))
-            },
             fido2_options: {
                 new_options: {
                     attestation: 'none'
@@ -163,7 +160,7 @@ before(async function () {
 });
 
 async function executeAsync(f, ...args) {
-    const r = (await browser.executeAsync(function (f, ...args) {
+    const r = await browser.executeAsync(function (f, ...args) {
         (async function () {
             let done = args[args.length - 1];
             try {
@@ -173,7 +170,7 @@ async function executeAsync(f, ...args) {
                 done({ error: ex.message }); 
             }
         })();
-    }, f.toString(), ...args)).value;
+    }, f.toString(), ...args);
 
     if (r && r.error) {
         throw new Error(r.error);
@@ -198,7 +195,11 @@ async function auth(url, options) {
             });
         }
 
+        const signed_challenge = get_response.data.signed_challenge;
+        delete get_response.data.signed_challenge;
+
         const attestation_options = get_response.data;
+
         attestation_options.challenge = Uint8Array.from(attestation_options.challenge,
             x => options.modify_challenge ? x ^ 1 : x);
         attestation_options.user.id = new TextEncoder('utf-8').encode(attestation_options.user.id);
@@ -210,18 +211,20 @@ async function auth(url, options) {
             response: {
                 attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
                 clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
-            }
+            },
+            signed_challenge
         };
-
-        if (options.expire_session_path) {
-            document.cookie = `session=; Path=${options.expire_session_path}; Expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
-        }
 
         const put_response = await axios.put(url, attestation_result, {
             validateStatus: status => status === options.valid_status
         });
 
-        return [attestation_result, put_response.data, put_response.status];
+        return [
+            attestation_result,
+            put_response.data,
+            put_response.status,
+            signed_challenge
+        ];
     }, url, options);
 }
 
@@ -232,10 +235,14 @@ async function verify(url, options) {
     }, options);
 
     await executeAsync(async (url, options) => {
-        let { cred_id, challenge } = (await axios(url)).data;
+        let { cred_id, challenge, signed_challenge } = (await axios(url)).data;
 
         if (options.cred_url) {
             ({ cred_id } = (await axios(options.cred_url)).data);
+        }
+
+        if (options.signed_challenge) {
+            signed_challenge = options.signed_challenge;
         }
 
         const assertion = await navigator.credentials.get({
@@ -256,7 +263,8 @@ async function verify(url, options) {
                 clientDataJSON: new TextDecoder('utf-8').decode(assertion.response.clientDataJSON),
                 signature: Array.from(new Uint8Array(assertion.response.signature)),
                 userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
-            }
+            },
+            signed_challenge
         };
 
         await axios.post(options.verify_url, assertion_result, {
@@ -346,7 +354,7 @@ async function perk(cred_url, perk_origin, options) {
 
 describe('credentials', function () {
     this.timeout(5 * 60 * 1000);
-    browser.timeouts('script', 5 * 60 * 1000);
+    browser.setTimeout({ script: 5 * 60 * 1000 });
 
     it('should return 404', async function () {
         expect(await executeAsync(async url => {
@@ -360,14 +368,6 @@ describe('credentials', function () {
         const [unused_attestation_result, unused_key_info, status] = await auth(urls[0], {
             valid_status: 400,
             modify_challenge: true
-        });
-        expect(status).to.equal(400);
-    });
-
-    it('should return 400 for expired session', async function () {
-        const [unused_attestation_result, unused_key_info, status] = await auth(urls[0], {
-            valid_status: 400,
-            expire_session_path: `/cred/${valid_ids[0]}/`
         });
         expect(status).to.equal(400);
     });
@@ -388,7 +388,7 @@ describe('credentials', function () {
             });
             expect(status).to.equal(400);
         } finally {
-            Date.now = orig_now;
+            Date.now = orig_now; // eslint-disable-line require-atomic-updates
         }
     });
 
@@ -409,11 +409,11 @@ describe('credentials', function () {
         expect(error.message).to.equal("body should have required property 'id'");
     });
 
-    let attestation_result, key_info;
+    let attestation_result, key_info, signed_challenge;
 
     it('should return challenge and add public key', async function () {
         let status;
-        [attestation_result, key_info, status] = await auth(urls[0]);
+        [attestation_result, key_info, status, signed_challenge] = await auth(urls[0]);
         expect(status).to.equal(200);
     });
 
@@ -422,6 +422,7 @@ describe('credentials', function () {
             return (await axios(url)).data;
         }, urls[0]);
         delete key_info2.challenge;
+        delete key_info2.signed_challenge;
         expect(key_info2).to.eql(key_info);
     });
 
@@ -452,6 +453,13 @@ describe('credentials', function () {
 
     it('should verify assertion so client knows it successfully registered', async function () {
         await verify(urls[0]);
+    });
+
+    it('should not be able to use assertion challenge to verify', async function () {
+        await verify(urls[0], {
+            signed_challenge,
+            valid_status: 400
+        });
     });
 
     it('should return 400 when try to verify invalid assertion', async function () {
@@ -495,6 +503,7 @@ describe('credentials', function () {
             return (await axios(url)).data;
         }, urls[0]);
         delete key_info2.challenge;
+        delete key_info2.signed_challenge;
         expect(key_info2).to.eql(key_info);
 
         // then check we delete invalid IDs
@@ -551,7 +560,7 @@ describe('credentials', function () {
         });
     });
 
-    it('should keep session per ID', async function () {
+    it('should return challenges per ID', async function () {
         const [unused_attestation_result, key_info2] = await auth(urls[0], {
             interleave_get_url: urls[1]
         });

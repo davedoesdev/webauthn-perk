@@ -1,9 +1,10 @@
 /*eslint-env node */
 import { promisify } from 'util';
 import { Fido2Lib } from '@davedoesdev/fido2-lib';
+import { Crypt } from 'simple-crypt';
+import crypto from 'crypto';
 import clone from 'deep-copy';
 import { BufferToArrayBuffer, fix_assertion_types } from './common.js';
-import fastify_secure_session from 'fastify-secure-session';
 import { cred as schemas } from './dist/schemas.js';
 const default_user = 'Anonymous User';
 
@@ -43,23 +44,44 @@ export default async function (fastify, options) {
         }
     }
 
-    fastify.register(fastify_secure_session, options.secure_session_options);
+    const generateKeyPair = promisify(crypto.generateKeyPair);
+    const challenge_keypair = options.challenge_keypair || await generateKeyPair('rsa', { modulusLength: 3072 });
 
-    function check_time(request, name) {
-        const challengeTime = request.session.get(name);
-        if (!challengeTime) {
-            const err = new Error('no challenge timestamp');
-            err.statusCode = 400;
-            throw err;
-        }
-        if ((challengeTime + challenge_timeout) <= Date.now('dummy' /* for test */)) {
-            const err = new Error('challenge timed out');
-            err.statusCode = 400;
-            throw err;
+    const sign_encrypt_sign = promisify(Crypt.sign_encrypt_sign.bind(Crypt));
+    const verify_decrypt_verify = promisify(Crypt.verify_decrypt_verify.bind(Crypt));
+
+    async function sign_challenge(id, type, challenge) {
+        return await sign_encrypt_sign(
+            { key: challenge_keypair.privateKey, is_private: true },
+            { key: challenge_keypair.publicKey, is_public: true },
+            [ id, type, challenge, Date.now() ]);
+    }
+
+    async function verify_challenge(expected_id, expected_type, obj) {
+        try {
+            const signed_challenge = obj.signed_challenge;
+            delete obj.signed_challenge;
+            const [ id, type, challenge, timestamp ] = await verify_decrypt_verify(
+                { key: challenge_keypair.privateKey, is_private: true },
+                { key: challenge_keypair.publicKey, is_public: true },
+                signed_challenge);
+            if (id !== expected_id) {
+                throw new Error('wrong ID');
+            }
+            if (type !== expected_type) {
+                throw new Error('wrong type');
+            }
+            if ((timestamp + challenge_timeout) <= Date.now('dummy' /* for test */)) {
+                throw new Error('challenge timed out');
+            }
+            return challenge;
+        } catch (ex) {
+            ex.statusCode = 400;
+            throw ex;
         }
     }
 
-    for (const id of valid_ids) {
+    for (const id of valid_ids) { // eslint-disable-line require-atomic-updates
         fastify.log.info(`setting up routes for id: ${id}`);
 
         fastify.get(`/${id}/`, { schema: schemas.get }, async (request, reply) => {
@@ -73,24 +95,31 @@ export default async function (fastify, options) {
                     displayName: default_user,
                     id: default_user
                 }, attestation_options.user, fido2_options.user);
-                request.session.set('attestationChallenge', attestation_options.challenge);
-                request.session.set('attestationChallengeTime', Date.now());
+                attestation_options.signed_challenge = await sign_challenge(id, 'attestation', attestation_options.challenge);
                 return attestation_options;
             }
             const assertion_options = await fido2lib.assertionOptions(fido2_options.assertion_options);
             const challenge = Array.from(Buffer.from(assertion_options.challenge));
-            request.session.set('assertionChallenge', challenge);
-            request.session.set('assertionChallengeTime', Date.now());
+            // TODO 
+            //
+            // we need to pass on all the assertion options so we pick up e.g.
+            // userVerification
+            // but for perk from client, which should be able to generate
+            // assertions without network connection, we need to allow the
+            // caller to pass in the options
+            // should we allow caller to pass in options for cred too and
+            // merge them?
             return {
                 cred_id: pub_key.cred_id,
                 issuer_id,
-                challenge
+                challenge,
+                signed_challenge: await sign_challenge(id, 'assertion', challenge)
             };
         });
 
         fastify.put(`/${id}/`, { schema: schemas.put }, async request => {
-            check_time(request, 'attestationChallengeTime');
             const cred = clone(request.body);
+            const challenge = await verify_challenge(id, 'attestation', cred);
             cred.id = BufferToArrayBuffer(Buffer.from(cred.id, 'base64'));
             cred.response.attestationObject = BufferToArrayBuffer(Buffer.from(cred.response.attestationObject));
             cred.response.clientDataJSON = BufferToArrayBuffer(Buffer.from(cred.response.clientDataJSON));
@@ -101,8 +130,7 @@ export default async function (fastify, options) {
                     Object.assign({
                         // fido2-lib expects https
                         origin: `https://${request.headers.host}`,
-                        // session is signed and we never set attestationChallengeTime without attestationChallenge
-                        challenge: request.session.get('attestationChallenge'),
+                        challenge,
                         factor: 'either'
                     }, fido2_options.attestation_expectations));
             } catch (ex) {
@@ -125,8 +153,8 @@ export default async function (fastify, options) {
                 err.statusCode = 404;
                 throw err;
             }
-            check_time(request, 'assertionChallengeTime');
             const assertion = clone(request.body);
+            const challenge = await verify_challenge(id, 'assertion', assertion);
             fix_assertion_types(assertion);
             const userHandle = Object.assign({
                 // not all authenticators can store user handles
@@ -135,8 +163,7 @@ export default async function (fastify, options) {
             const assertion_expectations = Object.assign({
                 // fido2-lib expects https
                 origin: `https://${request.headers.host}`,
-                // session is signed and we never set assertionChallengeTime without assertionChallenge
-                challenge: request.session.get('assertionChallenge'),
+                challenge,
                 factor: 'either',
                 prevCounter: 0,
                 userHandle: userHandle,

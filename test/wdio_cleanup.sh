@@ -1,2 +1,4 @@
 #!/bin/bash
-exec pkill -f geckodriver
+if pgrep -f geckodriver; then
+  exec pkill -f geckodriver
+fi

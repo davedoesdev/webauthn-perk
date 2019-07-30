@@ -5,7 +5,7 @@ import load_grunt_tasks from 'load-grunt-tasks';
 
 const mod_path = path.join('.', 'node_modules');
 const bin_path = path.join(mod_path, '.bin');
-const nyc_path = path.join(bin_path, 'nyc');
+const c8_path = path.join(bin_path, 'c8');
 const wdio_path = path.join(bin_path, 'wdio');
 
 export default function (grunt) {
@@ -25,9 +25,9 @@ export default function (grunt) {
             test: `node -r esm ${wdio_path}`,
             wdio_cleanup: './test/wdio_cleanup.sh',
 
-            cover: `${nyc_path} --require esm -x wdio.conf.js -x 'test/**' ${wdio_path}`,
-            cover_report: `${nyc_path} report -r lcov`,
-            cover_check: `${nyc_path} check-coverage --statements 100 --branches 100 --functions 100 --lines 100`
+            cover: `${c8_path} -x wdio.conf.js -x 'test/**' node -r esm ${wdio_path}`,
+            cover_report: `${c8_path} report -r lcov`,
+            cover_check: `${c8_path} check-coverage --statements 100 --branches 100 --functions 100 --lines 100`
         },
 
         fileWrap: {
@@ -90,11 +90,18 @@ export default function (grunt) {
     grunt.registerTask('coverage', [
         'exec:cover',
         'exec:cover_report',
-        'exec:cover_check'
+        'force:exec:cover_check',
+        'exec:wdio_cleanup',
+        'exit_with_coverage_status'
     ]);
 
     grunt.registerTask('exit_with_test_status', function () {
         this.requires(['exec:test']);
+        return true;
+    });
+
+    grunt.registerTask('exit_with_coverage_status', function () {
+        this.requires(['exec:cover_check']);
         return true;
     });
 }

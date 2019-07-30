@@ -18,6 +18,21 @@ export function byte_array(nullable) {
 const non_nullable_byte_array = byte_array(false);
 const nullable_byte_array = byte_array(true);
 
+const signed_challenge = {
+    type: 'object',
+    required: [
+        'data',
+        'signature',
+        'version'
+    ],
+    additionalProperties: false,
+    properties: {
+        data: { type: 'string' },
+        signature: { type: 'string' },
+        version: { type: 'integer' }
+    }
+};
+
 function key_info(challenge) {
     const r = {
         type: 'object',
@@ -32,8 +47,44 @@ function key_info(challenge) {
         }
     };
     if (challenge) {
-        r.required.push('challenge');
+        r.required.push('challenge', 'signed_challenge');
         r.properties.challenge = non_nullable_byte_array;
+        r.properties.signed_challenge = signed_challenge;
+    }
+    return r;
+}
+
+function assertion(signed_challenge) {
+    const r = {
+        type: 'object',
+        required: [
+            'id',
+            'response'
+        ],
+        additionalProperties: false,
+        properties: {
+            id: { type: 'string' },
+            response: {
+                type: 'object',
+                required: [
+                    'authenticatorData',
+                    'clientDataJSON',
+                    'signature',
+                    'userHandle'
+                ],
+                additionalProperties: false,
+                properties: {
+                    authenticatorData: non_nullable_byte_array,
+                    clientDataJSON: { type: 'string' },
+                    signature: non_nullable_byte_array,
+                    userHandle: nullable_byte_array
+                }
+            }
+        }
+    };
+    if (signed_challenge) {
+        r.required.push('signed_challenge');
+        r.properties.signed_challenge = signed_challenge;
     }
     return r;
 }
@@ -48,6 +99,7 @@ export const cred = {
                     'rp',
                     'user',
                     'challenge',
+                    'signed_challenge',
                     'pubKeyCredParams',
                     'timeout',
                     'attestation'
@@ -79,6 +131,7 @@ export const cred = {
                         }
                     },
                     challenge: non_nullable_byte_array,
+                    signed_challenge,
                     pubKeyCredParams: {
                         type: 'array',
                         items: {
@@ -116,7 +169,8 @@ export const cred = {
             type: 'object',
             required: [
                 'id',
-                'response'
+                'response',
+                'signed_challenge'
             ],
             additionalProperties: false,
             properties: {
@@ -132,7 +186,8 @@ export const cred = {
                         attestationObject: non_nullable_byte_array,
                         clientDataJSON: { type: 'string' }
                     }
-                }
+                },
+                signed_challenge
             }
         },
         response: {
@@ -141,33 +196,7 @@ export const cred = {
     },
 
     post: {
-        body: {
-            type: 'object',
-            required: [
-                'id',
-                'response'
-            ],
-            additionalProperties: false,
-            properties: {
-                id: { type: 'string' },
-                response: {
-                    type: 'object',
-                    required: [
-                        'authenticatorData',
-                        'clientDataJSON',
-                        'signature',
-                        'userHandle'
-                    ],
-                    additionalProperties: false,
-                    properties: {
-                        authenticatorData: non_nullable_byte_array,
-                        clientDataJSON: { type: 'string' },
-                        signature: non_nullable_byte_array,
-                        userHandle: nullable_byte_array
-                    }
-                }
-            }
-        }
+        body: assertion(true) 
     }
 };
 
@@ -197,7 +226,7 @@ export function perk(options) {
                 additionalProperties: false,
                 properties: {
                     issuer_id: { type: 'string' },
-                    assertion: cred.post.body
+                    assertion: assertion(false)
                 }
             },
             response: options.response_schema
