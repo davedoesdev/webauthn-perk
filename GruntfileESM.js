@@ -55,7 +55,7 @@ export default function (grunt) {
                     })
                 }
             },
-            cover_report: `${nyc_path} report -r lcov`,
+            cover_report: `${nyc_path} report -r lcov -r text`,
             cover_check: `${nyc_path} check-coverage --statements 100 --branches 100 --functions 100 --lines 100`
         },
 
