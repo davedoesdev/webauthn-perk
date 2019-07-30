@@ -45,13 +45,15 @@
     "simple-crypt": "^3.0.1"
   },
   "devDependencies": {
+    "@babel/cli": "^7.5.5",
+    "@babel/core": "^7.5.5",
     "@wdio/cli": "^5.11.8",
     "@wdio/firefox-profile-service": "^5.11.0",
     "@wdio/local-runner": "^5.11.7",
     "@wdio/mocha-framework": "^5.11.0",
     "@wdio/selenium-standalone-service": "5.11.2",
     "@wdio/spec-reporter": "^5.11.7",
-    "c8": "^5.0.1",
+    "babel-plugin-istanbul": "^5.2.0",
     "chai": "^4.2.0",
     "eslint": "^6.1.0",
     "fastify": "^2.6.0",
@@ -60,6 +62,7 @@
     "grunt-exec": "^3.0.0",
     "grunt-force-task": "^2.0.0",
     "mocha": "^6.2.0",
+    "nyc": "^14.1.1",
     "webdriverio": "^5.11.7"
   },
   "engines": {

@@ -7,11 +7,10 @@ import fs from 'fs';
 import { Agent } from 'https';
 import { expect } from 'chai';
 import crypto from 'crypto';
-import webauthn_perk from '..';
 import mod_fastify from 'fastify';
 import fastify_static from 'fastify-static';
 import axios from 'axios';
-const readFile = fs.promises.readFile;
+const { readFile, writeFile } = fs.promises;
 const randomBytes = promisify(crypto.randomBytes);
 const port = 3000;
 const origin = `https://localhost:${port}`;
@@ -19,7 +18,11 @@ const audience = 'urn:webauthn-perk:test';
 const valid_ids = [];
 const urls = [];
 
+const webauthn_perk_path = process.env.NYC_OUTPUT_DIR ? 'webauthn-perk' : '..';
+
 async function make_fastify(port, options) {
+    const webauthn_perk = (await import(webauthn_perk_path)).default;
+
     options = Object.assign({
         valid_ids,
         async handler (info) {
@@ -136,10 +139,14 @@ async function make_fastify(port, options) {
 
     await fastify.listen(port);
 
-    browser.on('end', function () {
-        (async function () {
-            await fastify.close();
-        })();
+    browser.config.after.push(async function () {
+        await fastify.close();
+
+        const coverage_dir = process.env.NYC_OUTPUT_DIR;
+        if (coverage_dir) {
+            const json = JSON.stringify(global.__coverage__);
+            await writeFile(path.join(coverage_dir, 'coverage.json'), json);
+        }
     });
 
     return fastify;
@@ -477,6 +484,8 @@ describe('credentials', function () {
     });
 
     it('should delete keys not in valid ID list', async function () {
+        const webauthn_perk = (await import(webauthn_perk_path)).default;
+
         const dummy_fastify = {
             addHook() {},
             register(f, opts) {

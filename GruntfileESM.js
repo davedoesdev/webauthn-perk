@@ -5,8 +5,13 @@ import load_grunt_tasks from 'load-grunt-tasks';
 
 const mod_path = path.join('.', 'node_modules');
 const bin_path = path.join(mod_path, '.bin');
-const c8_path = path.join(bin_path, 'c8');
+const babel_path = path.join(bin_path, 'babel');
+const nyc_path = path.join(bin_path, 'nyc');
 const wdio_path = path.join(bin_path, 'wdio');
+const grunt_path = path.join(bin_path, 'grunt');
+
+const coverage_path = path.join(__dirname, '.nyc_output');
+const instrument_path = 'test/node_modules/webauthn-perk';
 
 export default function (grunt) {
     grunt.initConfig({
@@ -14,6 +19,7 @@ export default function (grunt) {
             target: [
                 '*.js',
                 'test/**/*.js',
+                '!test/node_modules/**/*.js',
                 'dist/**/*.js',
                 '!dist/axios.js',
                 '!dist/jsrsasign-all-min.js',
@@ -25,9 +31,32 @@ export default function (grunt) {
             test: `node -r esm ${wdio_path}`,
             wdio_cleanup: './test/wdio_cleanup.sh',
 
-            cover: `${c8_path} -x wdio.conf.js -x 'test/**' node -r esm ${wdio_path}`,
-            cover_report: `${c8_path} report -r lcov`,
-            cover_check: `${c8_path} check-coverage --statements 100 --branches 100 --functions 100 --lines 100`
+            instrument: {
+                cmd: [
+                    `${babel_path} common.js cred.js index.js perk.js plugin.js --out-dir ${instrument_path}`,
+                    `mkdir -p ${instrument_path}/dist`,
+                    `cp dist/schemas.js ${instrument_path}/dist`,
+                ].join('&&'),
+                options: {
+                    env: Object.assign({}, process.env, {
+                        NODE_ENV: 'test'
+                    })
+                }
+            },
+
+            cover: {
+                cmd: [
+                    `mkdir -p '${coverage_path}'`,
+                    `${grunt_path} test`
+                ].join('&&'),
+                options: {
+                    env: Object.assign({}, process.env, {
+                        NYC_OUTPUT_DIR: coverage_path
+                    })
+                }
+            },
+            cover_report: `${nyc_path} report -r lcov`,
+            cover_check: `${nyc_path} check-coverage --statements 100 --branches 100 --functions 100 --lines 100`
         },
 
         fileWrap: {
@@ -88,6 +117,7 @@ export default function (grunt) {
     ]);
 
     grunt.registerTask('coverage', [
+        'exec:instrument',
         'exec:cover',
         'exec:cover_report',
         'force:exec:cover_check',

@@ -1,4 +1,4 @@
-/node_modules
+node_modules
 /errorShots
 /test/store
 /.nyc_output
