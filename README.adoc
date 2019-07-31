@@ -105,10 +105,13 @@ fastify.register(webauthn_perk, {
                     return assertion_expectations;
                 }
             },
-            secure_session_options: {
-                // See https://github.com/mcollina/fastify-secure-session
-                // You must supply a key.
-            }
+            // Keypair used to sign challenges so we know we issued them.
+            // This is optional - if you don't supply one then generateKeyPair() is used to generate one:
+            // https://nodejs.org/dist/latest-v12.x/docs/api/crypto.html#crypto_crypto_generatekeypair_type_options_callback
+            challenge_keypair: {
+                publicKey: KeyObject or PEM string,
+                privateKey: KeyObject or PEM string
+            },
         },
         perk_options: {
             prefix: '/perk', // Well-known path for presenting assertions is this plus /
