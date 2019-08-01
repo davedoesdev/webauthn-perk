@@ -33,27 +33,6 @@ const signed_challenge = {
     }
 };
 
-function key_info(challenge) {
-    const r = {
-        type: 'object',
-        required: [
-            'cred_id',
-            'issuer_id'
-        ],
-        additionalProperties: false,
-        properties: {
-            cred_id: non_nullable_byte_array,
-            issuer_id: { type: 'string' }
-        }
-    };
-    if (challenge) {
-        r.required.push('challenge', 'signed_challenge');
-        r.properties.challenge = non_nullable_byte_array;
-        r.properties.signed_challenge = signed_challenge;
-    }
-    return r;
-}
-
 function assertion(signed_challenge) {
     const r = {
         type: 'object',
@@ -92,73 +71,121 @@ function assertion(signed_challenge) {
 export const cred = {
     get: {
         response: {
-            200: key_info(true),
-            404: {
+            200: {
                 type: 'object',
                 required: [
-                    'rp',
-                    'user',
-                    'challenge',
+                    'assertion_options',
                     'signed_challenge',
-                    'pubKeyCredParams',
-                    'timeout',
-                    'attestation'
+                    'cred_id',
+                    'issuer_id'
                 ],
                 additionalProperties: false,
                 properties: {
-                    rp: {
+                    assertion_options: {
                         type: 'object',
                         required: [
-                            'name'
-                        ],
-                        addtionalProperties: false,
-                        properties: {
-                            name: { type: 'string' },
-                        }
-                    },
-                    user: {
-                        type: 'object',
-                        required: [
-                            'name',
-                            'displayName',
-                            'id'
+                            'challenge'
                         ],
                         additionalProperties: false,
                         properties: {
-                            name: { type: 'string' },
-                            displayName: { type: 'string' },
-                            id: { type: 'string' }
+                            challenge: non_nullable_byte_array,
+                            timeout: { type: 'integer' },
+                            rpId: { type: 'string' },
+                            attestation: { type: 'string' },
+                            userVerification: { type: 'string' },
+                            rawChallenge: non_nullable_byte_array,
+                            extensions: { type: 'object' }
                         }
                     },
-                    challenge: non_nullable_byte_array,
                     signed_challenge,
-                    pubKeyCredParams: {
-                        type: 'array',
-                        items: {
-                            type: 'object',
-                            required: [
-                                'type',
-                                'alg'
-                            ],
-                            additionalProperties: false,
-                            properties: {
-                                type: {
-                                    type: 'string',
-                                    const: 'public-key'
-                                },
-                                alg: { type: 'integer' }
-                            }
+                    cred_id: non_nullable_byte_array,
+                    issuer_id: { type: 'string' }
+                }
+            },
+            404: {
+                type: 'object',
+                required: [
+                    'attestation_options',
+                    'signed_challenge'
+                ],
+                additionalProperties: false,
+                properties: {
+                    attestation_options: {
+                        type: 'object',
+                        required: [
+                            'rp',
+                            'user',
+                            'challenge',
+                        ],
+                        additionalProperties: false,
+                        properties: {
+                            rp: {
+                                type: 'object',
+                                required: [
+                                    'name'
+                                ],
+                                addtionalProperties: false,
+                                properties: {
+                                    name: { type: 'string' },
+                                    id: { type: 'string' }
+                                }
+                            },
+                            user: {
+                                type: 'object',
+                                required: [
+                                    'name',
+                                    'displayName',
+                                    'id'
+                                ],
+                                additionalProperties: false,
+                                properties: {
+                                    name: { type: 'string' },
+                                    displayName: { type: 'string' },
+                                    id: { type: 'string' }
+                                }
+                            },
+                            challenge: non_nullable_byte_array,
+                            pubKeyCredParams: {
+                                type: 'array',
+                                items: {
+                                    type: 'object',
+                                    required: [
+                                        'type',
+                                        'alg'
+                                    ],
+                                    additionalProperties: false,
+                                    properties: {
+                                        type: {
+                                            type: 'string',
+                                            const: 'public-key'
+                                        },
+                                        alg: { type: 'integer' }
+                                    }
+                                }
+                            },
+                            timeout: { type: 'integer' },
+                            attestation: {
+                                type: 'string',
+                                enum: [
+                                    'direct',
+                                    'indirect',
+                                    'none'
+                                ]
+                            },
+                            authenticatorSelectionCriteria: {
+                                type: 'object',
+                                additionalProperties: false,
+                                properties: {
+                                    attachment: { type: 'string' },
+                                    requireResidentKey: { type: 'boolean' },
+                                    userVerification: { type: 'string' }
+                                }
+                            },
+                            rawChallenge: non_nullable_byte_array,
+                            extensions: { type: 'object' }
                         }
                     },
-                    timeout: { type: 'integer' },
-                    attestation: {
-                        type: 'string',
-                        enum: [
-                            'direct',
-                            'indirect',
-                            'none'
-                        ]
-                    }
+                    signed_challenge
                 }
             }
         }
@@ -191,7 +218,18 @@ export const cred = {
             }
         },
         response: {
-            200: key_info(false)
+            200: {
+                type: 'object',
+                required: [
+                    'cred_id',
+                    'issuer_id'
+                ],
+                additionalProperties: false,
+                properties: {
+                    cred_id: non_nullable_byte_array,
+                    issuer_id: { type: 'string' }
+                }
+            }
         }
     },
 

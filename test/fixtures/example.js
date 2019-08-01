@@ -26,6 +26,7 @@ class ExamplePerkWorkflow extends PerkWorkflow {
 }
 
 function show_error(ex) {
+    console.error(ex);
     const error_div = document.createElement('div');
     const error_text = document.createTextNode(`Error: ${ex.message}`);
     error_div.appendChild(error_text);

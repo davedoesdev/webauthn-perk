@@ -197,7 +197,7 @@ JSON schemas for these routes can be found in link:dist/schemas.js[].
 link:dist/perk-workflow.js[] contains a class, `PerkWorkflow`, which you can use from your browser-side
 Javascript to call the Web Authentication API and communicate with your server.
 
-The script is an ES2015 module so you should include it using `<script type="mmodule">`. It exports
+The script is an ES2015 module so you should include it using `<script type="module">`. It exports
 the `PerkWorkflow` class.
 
 If you construct a `PerkWorkflow` object with no arguments, it tries to guess your server's routes

@@ -20,6 +20,13 @@ function validate(schema, response) {
     }
 }
 
+function toUint8Array(obj, prop) {
+    const v = obj[prop];
+    if (v) {
+        obj[prop] = Uint8Array.from(v);
+    }
+}
+
 export class PerkWorkflowBase {
     constructor(options) {
         const path = window.location.pathname;
@@ -40,16 +47,15 @@ export class PerkWorkflowBase {
         validate(response_schemas.get[get_response.status], get_response);
 
         this.get_result = get_response.data;
-        this.signed_challenge = this.get_result.signed_challenge;
-        delete this.get_result.signed_challenge;
 
         return get_response.status === 200;
     }
 
     async register(signal) {
         // Unpack the options
-        const attestation_options = this.get_result;
-        attestation_options.challenge = Uint8Array.from(attestation_options.challenge);
+        const { attestation_options, signed_challenge } = this.get_result;
+        toUint8Array(attestation_options, 'challenge');
+        toUint8Array(attestation_options, 'rawChallenge');
         attestation_options.user.id = new TextEncoder('utf-8').encode(attestation_options.user.id);
 
         // Create a new credential and sign the challenge.
@@ -65,35 +71,37 @@ export class PerkWorkflowBase {
                 attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
                 clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
             },
-            signed_challenge: this.signed_challenge
+            signed_challenge
         };
 
         const put_response = await this.options.axios.put(this.options.cred_path, attestation_result);
         validate(response_schemas.put[put_response.status], put_response);
 
         ({ cred_id: this.cred_id, issuer_id: this.issuer_id } = put_response.data);
-
-        this.cred_id = Uint8Array.from(this.cred_id);
+        toUint8Array(this, 'cred_id');
     }
 
     unpack_result() {
-        // Unpack the IDs and challenge
-        let challenge;
-        ({ cred_id: this.cred_id, issuer_id: this.issuer_id, challenge } = this.get_result);
-        this.cred_id = Uint8Array.from(this.cred_id);
-        return challenge;
+        // Unpack the IDs
+        ({ cred_id: this.cred_id, issuer_id: this.issuer_id } = this.get_result);
+        toUint8Array(this, 'cred_id');
     }
 
     async verify(signal) {
+        this.unpack_result();
+
+        const { assertion_options, signed_challenge } = this.get_result;
+        toUint8Array(assertion_options, 'challenge');
+        toUint8Array(assertion_options, 'rawChallenge');
+
         // Sign challenge with credential
         const assertion = await navigator.credentials.get({
-            publicKey: {
-                challenge: Uint8Array.from(this.unpack_result()),
+            publicKey: Object.assign(assertion_options, {
                 allowCredentials: [{
                     id: this.cred_id,
                     type: 'public-key'
                 }]
-            },
+            }),
             signal
         });
             
@@ -106,7 +114,7 @@ export class PerkWorkflowBase {
                 signature: Array.from(new Uint8Array(assertion.response.signature)),
                 userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
             },
-            signed_challenge: this.signed_challenge
+            signed_challenge
         };
         await this.options.axios.post(this.options.cred_path, assertion_result);
     }

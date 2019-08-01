@@ -4,9 +4,20 @@ import { Fido2Lib } from '@davedoesdev/fido2-lib';
 import { Crypt } from 'simple-crypt';
 import crypto from 'crypto';
 import clone from 'deep-copy';
-import { BufferToArrayBuffer, fix_assertion_types } from './common.js';
+import { toArrayBuffer, fix_assertion_types } from './common.js';
 import { cred as schemas } from './dist/schemas.js';
 const default_user = 'Anonymous User';
+
+function toArray(obj, prop) {
+    let v = prop ? obj[prop] : obj;
+    if (v) {
+        v = Array.from(Buffer.from(v));
+        if (prop) {
+            obj[prop] = v;
+        }
+    }
+    return v;
+}
 
 export default async function (fastify, options) {
     options = options.cred_options || /* istanbul ignore next */ options;
@@ -89,17 +100,26 @@ export default async function (fastify, options) {
             if (pub_key === null) {
                 reply.code(404);
                 const attestation_options = await fido2lib.attestationOptions(fido2_options.attestation_options);
-                attestation_options.challenge = Array.from(Buffer.from(attestation_options.challenge));
+                toArray(attestation_options, 'challenge');
+                toArray(attestation_options, 'rawChallenge');
                 attestation_options.user = Object.assign({
                     name: default_user,
                     displayName: default_user,
                     id: default_user
                 }, attestation_options.user, fido2_options.user);
-                attestation_options.signed_challenge = await sign_challenge(id, 'attestation', attestation_options.challenge);
-                return attestation_options;
+                const signed_challenge = await sign_challenge(id, 'attestation', attestation_options.challenge);
+                return { attestation_options, signed_challenge };
             }
             const assertion_options = await fido2lib.assertionOptions(fido2_options.assertion_options);
-            const challenge = Array.from(Buffer.from(assertion_options.challenge));
+            toArray(assertion_options, 'challenge');
+            toArray(assertion_options, 'rawChallenge');
+            const signed_challenge = await sign_challenge(id, 'assertion', assertion_options.challenge);
+            return {
+                assertion_options,
+                signed_challenge,
+                cred_id: pub_key.cred_id,
+                issuer_id
+            };
             // TODO 
             //
             // we need to pass on all the assertion options so we pick up e.g.
@@ -109,20 +129,16 @@ export default async function (fastify, options) {
             // caller to pass in the options
             // should we allow caller to pass in options for cred too and
             // merge them?
-            return {
-                cred_id: pub_key.cred_id,
-                issuer_id,
-                challenge,
-                signed_challenge: await sign_challenge(id, 'assertion', challenge)
-            };
+            //
+            // update doc to reflect changed data from server
         });
 
         fastify.put(`/${id}/`, { schema: schemas.put }, async request => {
             const cred = clone(request.body);
             const challenge = await verify_challenge(id, 'attestation', cred);
-            cred.id = BufferToArrayBuffer(Buffer.from(cred.id, 'base64'));
-            cred.response.attestationObject = BufferToArrayBuffer(Buffer.from(cred.response.attestationObject));
-            cred.response.clientDataJSON = BufferToArrayBuffer(Buffer.from(cred.response.clientDataJSON));
+            toArrayBuffer(cred, 'id', 'base64');
+            toArrayBuffer(cred.response, 'attestationObject');
+            toArrayBuffer(cred.response, 'clientDataJSON');
             let cred_response;
             try {
                 cred_response = await fido2lib.attestationResult(
@@ -137,7 +153,7 @@ export default async function (fastify, options) {
                 ex.statusCode = 400;
                 throw ex;
             }
-            const cred_id = Array.from(Buffer.from(cred_response.authnrData.get('credId')));
+            const cred_id = toArray(cred_response.authnrData.get('credId'));
             const issuer_id = await add_pub_key(id, {
                 pub_key: cred_response.authnrData.get('credentialPublicKeyPem'),
                 cred_id: cred_id

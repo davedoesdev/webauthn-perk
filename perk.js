@@ -68,6 +68,7 @@ export default async function (fastify, options) {
             prev_counter: expectations.prevCounter,
             expected_user_handle: expectations.userHandle
         };
+        console.log("TOKEN", token);
         let info;
         try {
             info = await authorize(token);
