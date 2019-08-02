@@ -129,8 +129,6 @@ export default async function (fastify, options) {
             // caller to pass in the options
             // should we allow caller to pass in options for cred too and
             // merge them?
-            //
-            // update doc to reflect changed data from server
         });
 
         fastify.put(`/${id}/`, { schema: schemas.put }, async request => {
