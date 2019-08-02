@@ -203,9 +203,7 @@ async function auth(url, options) {
         }
 
         const signed_challenge = get_response.data.signed_challenge;
-        delete get_response.data.signed_challenge;
-
-        const attestation_options = get_response.data;
+        const attestation_options = get_response.data.attestation_options;
 
         attestation_options.challenge = Uint8Array.from(attestation_options.challenge,
             x => options.modify_challenge ? x ^ 1 : x);
@@ -242,7 +240,7 @@ async function verify(url, options) {
     }, options);
 
     await executeAsync(async (url, options) => {
-        let { cred_id, challenge, signed_challenge } = (await axios(url)).data;
+        let { cred_id, signed_challenge, assertion_options} = (await axios(url)).data;
 
         if (options.cred_url) {
             ({ cred_id } = (await axios(options.cred_url)).data);
@@ -252,15 +250,16 @@ async function verify(url, options) {
             signed_challenge = options.signed_challenge;
         }
 
+        assertion_options.challenge = Uint8Array.from(assertion_options.challenge,
+            x => options.modify_challenge ? x ^ 1 : x);
+
         const assertion = await navigator.credentials.get({
-            publicKey: {
-                challenge: Uint8Array.from(challenge,
-                    x => options.modify_challenge ? x ^ 1 : x),
+            publicKey: Object.assign(assertion_options, {
                 allowCredentials: [{
                     id: Uint8Array.from(cred_id),
                     type: 'public-key'
                 }]
-            }
+            })
         });
 
         const assertion_result = {
@@ -428,7 +427,7 @@ describe('credentials', function () {
         const key_info2 = await executeAsync(async url => {
             return (await axios(url)).data;
         }, urls[0]);
-        delete key_info2.challenge;
+        delete key_info2.assertion_options;
         delete key_info2.signed_challenge;
         expect(key_info2).to.eql(key_info);
     });
@@ -511,7 +510,7 @@ describe('credentials', function () {
         const key_info2 = await executeAsync(async url => {
             return (await axios(url)).data;
         }, urls[0]);
-        delete key_info2.challenge;
+        delete key_info2.assertion_options;
         delete key_info2.signed_challenge;
         expect(key_info2).to.eql(key_info);
 
