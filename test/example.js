@@ -31,20 +31,20 @@ const randomBytes = promisify(crypto.randomBytes);
             fido2_options: {
                 new_options: {
                     attestation: 'none',
-                    //authenticatorUserVerification: 'required'
+                    authenticatorUserVerification: 'required'
                 },
                 assertion_expectations: {
-                    //factor: 'first'
+                    factor: 'first'
                 },
                 attestation_expectations: {
-                    //factor: 'first'
+                    factor: 'first'
                 }
             }
         },
         perk_options: {
             fido2_options: {
                 assertion_expectations: {
-                    //factor: 'first'
+                    factor: 'first'
                 }
             },
             response_schema: {

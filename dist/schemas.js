@@ -172,7 +172,7 @@ export const cred = {
                                     'none'
                                 ]
                             },
-                            authenticatorSelectionCriteria: {
+                            authenticatorSelection: {
                                 type: 'object',
                                 additionalProperties: false,
                                 properties: {
