@@ -36,7 +36,11 @@ function show_error(ex) {
 window.addEventListener('load', async function () {
     try {
         // Start the workflow
-        const workflow = new ExamplePerkWorkflow();
+        const workflow = new ExamplePerkWorkflow({
+            assertion_options: {
+                //userVerification: 'required'
+            }
+        });
         await workflow.authenticate();
 
         // Generate assertions

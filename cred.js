@@ -120,15 +120,6 @@ export default async function (fastify, options) {
                 cred_id: pub_key.cred_id,
                 issuer_id
             };
-            // TODO 
-            //
-            // we need to pass on all the assertion options so we pick up e.g.
-            // userVerification
-            // but for perk from client, which should be able to generate
-            // assertions without network connection, we need to allow the
-            // caller to pass in the options
-            // should we allow caller to pass in options for cred too and
-            // merge them?
         });
 
         fastify.put(`/${id}/`, { schema: schemas.put }, async request => {

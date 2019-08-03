@@ -60,7 +60,7 @@ export class PerkWorkflowBase {
 
         // Create a new credential and sign the challenge.
         const cred = await navigator.credentials.create({
-            publicKey: attestation_options,
+            publicKey: Object.assign(attestation_options, this.options.attestation_options),
             signal
         });
 
@@ -101,7 +101,7 @@ export class PerkWorkflowBase {
                     id: this.cred_id,
                     type: 'public-key'
                 }]
-            }),
+            }, this.options.assertion_options),
             signal
         });
             
@@ -122,13 +122,13 @@ export class PerkWorkflowBase {
     async perk_assertion(jwt, signal) {
         // Sign JWT
         const assertion = await navigator.credentials.get({
-            publicKey: {
+            publicKey: Object.assign({
                 challenge: new TextEncoder('utf-8').encode(jwt),
                 allowCredentials: [{
                     id: this.cred_id,
                     type: 'public-key'
                 }]
-            },
+            }, this.options.assertion_options),
             signal
         });
 
