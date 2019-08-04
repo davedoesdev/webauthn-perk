@@ -224,6 +224,10 @@ https://example.com/a/b/c/perk/
 You can override this behaviour by passing an object containing `cred_path` and/or `perk_path`
 properties to ``PerkWorkflow``'s constructor.
 
+You can also supply options for `navigator.credentials.create` and
+`navigator.credentials.get` by passing `attestation_options` and
+`assertion_options` properties respectively.
+
 === authenticate()
 
 Once you've made a `workflow = new PerkWorkflow()`, call its `authenticate()` method to register
