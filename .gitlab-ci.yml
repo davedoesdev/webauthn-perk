@@ -1,4 +1,4 @@
-image: node:13.8.0-stretch
+image: node:13.7.0-stretch
 
 variables:
   DEBIAN_FRONTEND: noninteractive
