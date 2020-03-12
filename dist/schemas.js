@@ -18,22 +18,20 @@ export function byte_array(nullable) {
 const non_nullable_byte_array = byte_array(false);
 const nullable_byte_array = byte_array(true);
 
-const signed_challenge = {
+const authenticated_challenge = {
     type: 'object',
     required: [
-        'data',
-        'signature',
-        'version'
+        'ciphertext',
+        'nonce'
     ],
     additionalProperties: false,
     properties: {
-        data: { type: 'string' },
-        signature: { type: 'string' },
-        version: { type: 'integer' }
+        ciphertext: non_nullable_byte_array,
+        nonce: non_nullable_byte_array
     }
 };
 
-function assertion(signed_challenge) {
+function assertion(authenticated_challenge) {
     const r = {
         type: 'object',
         required: [
@@ -61,9 +59,9 @@ function assertion(signed_challenge) {
             }
         }
     };
-    if (signed_challenge) {
-        r.required.push('signed_challenge');
-        r.properties.signed_challenge = signed_challenge;
+    if (authenticated_challenge) {
+        r.required.push('authenticated_challenge');
+        r.properties.authenticated_challenge = authenticated_challenge;
     }
     return r;
 }
@@ -75,7 +73,7 @@ export const cred = {
                 type: 'object',
                 required: [
                     'assertion_options',
-                    'signed_challenge',
+                    'authenticated_challenge',
                     'cred_id',
                     'issuer_id'
                 ],
@@ -97,7 +95,7 @@ export const cred = {
                             extensions: { type: 'object' }
                         }
                     },
-                    signed_challenge,
+                    authenticated_challenge,
                     cred_id: non_nullable_byte_array,
                     issuer_id: { type: 'string' }
                 }
@@ -106,7 +104,7 @@ export const cred = {
                 type: 'object',
                 required: [
                     'attestation_options',
-                    'signed_challenge'
+                    'authenticated_challenge'
                 ],
                 additionalProperties: false,
                 properties: {
@@ -185,7 +183,7 @@ export const cred = {
                             extensions: { type: 'object' }
                         }
                     },
-                    signed_challenge
+                    authenticated_challenge
                 }
             }
         }
@@ -197,7 +195,7 @@ export const cred = {
             required: [
                 'id',
                 'response',
-                'signed_challenge'
+                'authenticated_challenge'
             ],
             additionalProperties: false,
             properties: {
@@ -214,7 +212,7 @@ export const cred = {
                         clientDataJSON: { type: 'string' }
                     }
                 },
-                signed_challenge
+                authenticated_challenge
             }
         },
         response: {

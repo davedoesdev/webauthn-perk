@@ -53,7 +53,7 @@ export class PerkWorkflowBase {
 
     async register(signal) {
         // Unpack the options
-        const { attestation_options, signed_challenge } = this.get_result;
+        const { attestation_options, authenticated_challenge } = this.get_result;
         toUint8Array(attestation_options, 'challenge');
         toUint8Array(attestation_options, 'rawChallenge');
         attestation_options.user.id = new TextEncoder('utf-8').encode(attestation_options.user.id);
@@ -71,7 +71,7 @@ export class PerkWorkflowBase {
                 attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
                 clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
             },
-            signed_challenge
+            authenticated_challenge
         };
 
         const put_response = await this.options.axios.put(this.options.cred_path, attestation_result);
@@ -90,7 +90,7 @@ export class PerkWorkflowBase {
     async verify(signal) {
         this.unpack_result();
 
-        const { assertion_options, signed_challenge } = this.get_result;
+        const { assertion_options, authenticated_challenge } = this.get_result;
         toUint8Array(assertion_options, 'challenge');
         toUint8Array(assertion_options, 'rawChallenge');
 
@@ -114,7 +114,7 @@ export class PerkWorkflowBase {
                 signature: Array.from(new Uint8Array(assertion.response.signature)),
                 userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
             },
-            signed_challenge
+            authenticated_challenge
         };
         await this.options.axios.post(this.options.cred_path, assertion_result);
     }

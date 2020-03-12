@@ -1,8 +1,7 @@
 /*eslint-env node */
 import { promisify } from 'util';
 import { Fido2Lib } from '@davedoesdev/fido2-lib';
-import { Crypt } from 'simple-crypt';
-import crypto from 'crypto';
+import { SodiumPlus } from 'sodium-plus';
 import clone from 'deep-copy';
 import { toArrayBuffer, fix_assertion_types } from './common.js';
 import { cred as schemas } from './dist/schemas.js';
@@ -55,27 +54,31 @@ export default async function (fastify, options) {
         }
     }
 
-    const generateKeyPair = promisify(crypto.generateKeyPair);
-    const challenge_keypair = options.challenge_keypair || await generateKeyPair('rsa', { modulusLength: 3072 });
+    // Use shared-key authenticated encryption for challenges
+    const sodium = await SodiumPlus.auto();
+    const challenge_key = await sodium.crypto_secretbox_keygen();
 
-    const sign_encrypt_sign = promisify(Crypt.sign_encrypt_sign.bind(Crypt));
-    const verify_decrypt_verify = promisify(Crypt.verify_decrypt_verify.bind(Crypt));
-
-    async function sign_challenge(id, type, challenge) {
-        return await sign_encrypt_sign(
-            { key: challenge_keypair.privateKey, is_private: true },
-            { key: challenge_keypair.publicKey, is_public: true },
-            [ id, type, challenge, Date.now() ]);
+    async function make_challenge(id, type, challenge) {
+        const nonce = await sodium.randombytes_buf(
+            sodium.CRYPTO_SECRETBOX_NONCEBYTES);
+        return {
+            ciphertext: toArray(await sodium.crypto_secretbox(
+                JSON.stringify([ id, type, challenge, Date.now() ]),
+                nonce,
+                challenge_key)),
+            nonce: toArray(nonce)
+        };
     }
 
     async function verify_challenge(expected_id, expected_type, obj) {
         try {
-            const signed_challenge = obj.signed_challenge;
-            delete obj.signed_challenge;
-            const [ id, type, challenge, timestamp ] = await verify_decrypt_verify(
-                { key: challenge_keypair.privateKey, is_private: true },
-                { key: challenge_keypair.publicKey, is_public: true },
-                signed_challenge);
+            const authenticated_challenge = obj.authenticated_challenge;
+            delete obj.authenticated_challenge;
+            const [ id, type, challenge, timestamp ] = JSON.parse(
+                await sodium.crypto_secretbox_open(
+                    Buffer.from(authenticated_challenge.ciphertext),
+                    Buffer.from(authenticated_challenge.nonce),
+                    challenge_key));
             if (id !== expected_id) {
                 throw new Error('wrong ID');
             }
@@ -107,16 +110,16 @@ export default async function (fastify, options) {
                     displayName: default_user,
                     id: default_user
                 }, attestation_options.user, fido2_options.user);
-                const signed_challenge = await sign_challenge(id, 'attestation', attestation_options.challenge);
-                return { attestation_options, signed_challenge };
+                const authenticated_challenge = await make_challenge(id, 'attestation', attestation_options.challenge);
+                return { attestation_options, authenticated_challenge };
             }
             const assertion_options = await fido2lib.assertionOptions(fido2_options.assertion_options);
             toArray(assertion_options, 'challenge');
             toArray(assertion_options, 'rawChallenge');
-            const signed_challenge = await sign_challenge(id, 'assertion', assertion_options.challenge);
+            const authenticated_challenge = await make_challenge(id, 'assertion', assertion_options.challenge);
             return {
                 assertion_options,
-                signed_challenge,
+                authenticated_challenge,
                 cred_id: pub_key.cred_id,
                 issuer_id
             };

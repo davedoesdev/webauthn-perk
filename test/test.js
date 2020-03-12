@@ -202,7 +202,7 @@ async function auth(url, options) {
             });
         }
 
-        const signed_challenge = get_response.data.signed_challenge;
+        const authenticated_challenge = get_response.data.authenticated_challenge;
         const attestation_options = get_response.data.attestation_options;
 
         attestation_options.challenge = Uint8Array.from(attestation_options.challenge,
@@ -217,7 +217,7 @@ async function auth(url, options) {
                 attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
                 clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
             },
-            signed_challenge
+            authenticated_challenge
         };
 
         const put_response = await axios.put(url, attestation_result, {
@@ -228,7 +228,7 @@ async function auth(url, options) {
             attestation_result,
             put_response.data,
             put_response.status,
-            signed_challenge
+            authenticated_challenge
         ];
     }, url, options);
 }
@@ -240,14 +240,14 @@ async function verify(url, options) {
     }, options);
 
     await executeAsync(async (url, options) => {
-        let { cred_id, signed_challenge, assertion_options} = (await axios(url)).data;
+        let { cred_id, authenticated_challenge, assertion_options} = (await axios(url)).data;
 
         if (options.cred_url) {
             ({ cred_id } = (await axios(options.cred_url)).data);
         }
 
-        if (options.signed_challenge) {
-            signed_challenge = options.signed_challenge;
+        if (options.authenticated_challenge) {
+            authenticated_challenge = options.authenticated_challenge;
         }
 
         assertion_options.challenge = Uint8Array.from(assertion_options.challenge,
@@ -270,7 +270,7 @@ async function verify(url, options) {
                 signature: Array.from(new Uint8Array(assertion.response.signature)),
                 userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
             },
-            signed_challenge
+            authenticated_challenge
         };
 
         await axios.post(options.verify_url, assertion_result, {
@@ -415,11 +415,11 @@ describe('credentials', function () {
         expect(error.message).to.equal("body should have required property 'id'");
     });
 
-    let attestation_result, key_info, signed_challenge;
+    let attestation_result, key_info, authenticated_challenge;
 
     it('should return challenge and add public key', async function () {
         let status;
-        [attestation_result, key_info, status, signed_challenge] = await auth(urls[0]);
+        [attestation_result, key_info, status, authenticated_challenge] = await auth(urls[0]);
         expect(status).to.equal(200);
     });
 
@@ -428,7 +428,7 @@ describe('credentials', function () {
             return (await axios(url)).data;
         }, urls[0]);
         delete key_info2.assertion_options;
-        delete key_info2.signed_challenge;
+        delete key_info2.authenticated_challenge;
         expect(key_info2).to.eql(key_info);
     });
 
@@ -463,7 +463,7 @@ describe('credentials', function () {
 
     it('should not be able to use assertion challenge to verify', async function () {
         await verify(urls[0], {
-            signed_challenge,
+            authenticated_challenge,
             valid_status: 400
         });
     });
@@ -511,7 +511,7 @@ describe('credentials', function () {
             return (await axios(url)).data;
         }, urls[0]);
         delete key_info2.assertion_options;
-        delete key_info2.signed_challenge;
+        delete key_info2.authenticated_challenge;
         expect(key_info2).to.eql(key_info);
 
         // then check we delete invalid IDs
