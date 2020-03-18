@@ -1,5 +1,5 @@
 /* eslint-env node, mocha, browser */
-/* global browser, PerkWorkflow, KJUR */
+/* global browser, PerkWorkflow, jwt_encode */
 
 import { promisify } from 'util';
 import path from 'path';
@@ -170,6 +170,13 @@ async function executeAsync(f, ...args) {
     const r = await browser.executeAsync(function (f, ...args) {
         (async function () {
             let done = args[args.length - 1];
+            function b64url(s) {
+                return btoa(s).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+            }
+            window.jwt_encode = function (header, payload) {
+                return b64url(JSON.stringify(header)) + '.' +
+                       b64url(JSON.stringify(payload)) + '.';
+            };
             try {
                 // We need to use window.eval to stop esm rewriting eval
                 done(await window.eval(f)(...args.slice(0, -1)));
@@ -301,7 +308,7 @@ async function perk(cred_url, perk_origin, options) {
                 new_claims.exp = Math.floor(expires.getTime() / 1000);
             }
 
-            return KJUR.jws.JWS.sign(null, header, new_claims);
+            return jwt_encode(header, new_claims);
         }
 
         const payload = {
@@ -637,7 +644,7 @@ describe('credentials', function () {
             const now = Math.floor(Date.now() / 1000);
             const jti = new Uint8Array(64);
             window.crypto.getRandomValues(jti);
-            const jwt = KJUR.jws.JWS.sign(null, {
+            const jwt = jwt_encode({
                 alg: 'none',
                 typ: 'JWT'
             }, {
@@ -709,7 +716,7 @@ describe('credentials', function () {
             const now = Math.floor(Date.now() / 1000);
             const jti = new Uint8Array(64);
             window.crypto.getRandomValues(jti);
-            const jwt = KJUR.jws.JWS.sign(null, {
+            const jwt = jwt_encode({
                 alg: 'none',
                 typ: 'JWT'
             }, {

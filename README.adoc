@@ -257,8 +257,7 @@ Once `workflow.authenticate()` has registered or verified the user's security to
 2. Call `url = await workflow.perk(jwt)`, passing the unsigned JWT as the argument.
 3. Arrange for the returned `url` to be sent to the user(s) you wish to receive the perk.
 
-Please see link:test/example.js[] for an example of how to use `PerkWorkflow`. It uses
-https://github.com/kjur/jsrsasign[jsrsasign] for making JWTs.
+Please see link:test/example.js[] for an example of how to use `PerkWorkflow`.
 
 === Overrides
 

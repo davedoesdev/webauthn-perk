@@ -1,7 +1,6 @@
 /* eslint-env browser */
 
 import { PerkWorkflow } from './dist/perk-workflow.js';
-import KJUR from './dist/jsrsasign-all-min.js';
 
 class ExamplePerkWorkflow extends PerkWorkflow {
     async before_verify() {
@@ -31,6 +30,15 @@ function show_error(ex) {
     const error_text = document.createTextNode(`Error: ${ex.message}`);
     error_div.appendChild(error_text);
     document.body.appendChild(error_div);
+}
+
+function b64url(s) {
+    return btoa(s).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+
+function jwt_encode(header, payload) {
+    return b64url(JSON.stringify(header)) + '.' +
+           b64url(JSON.stringify(payload)) + '.';
 }
 
 window.addEventListener('load', async function () {
@@ -65,7 +73,7 @@ window.addEventListener('load', async function () {
             try {
                 // Generate JWT containing message as a claim
                 const now = Math.floor(Date.now() / 1000);
-                const jwt = KJUR.jws.JWS.sign(null, {
+                const jwt = jwt_encode({
                     alg: 'none',
                     typ: 'JWT'
                 }, {

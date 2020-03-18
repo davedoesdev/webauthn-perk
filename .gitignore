@@ -3,5 +3,4 @@ node_modules
 /test/store
 /.nyc_output
 /dist/axios.js
-/dist/jsrsasign-all-min.js
 /dist/ajv.bundle.js

@@ -22,7 +22,6 @@ export default function (grunt) {
                 '!test/node_modules/**/*.js',
                 'dist/**/*.js',
                 '!dist/axios.js',
-                '!dist/jsrsasign-all-min.js',
                 '!dist/ajv.bundle.js'
             ]
         },
@@ -65,17 +64,6 @@ export default function (grunt) {
                 footer: '\nreturn this.axios; }).call({});',
                 files: {
                     './dist/axios.js': path.join(path.dirname(require.resolve('axios')), 'dist', 'axios.js')
-                },
-                options: {
-                    skipCheck: true
-                }
-            },
-
-            jsrsasign: {
-                header: 'export default (function () {',
-                footer: '\nreturn KJUR; }).call({});',
-                files: {
-                    './dist/jsrsasign-all-min.js': path.join(path.dirname(require.resolve('jsrsasign')), 'jsrsasign-all-min.js')
                 },
                 options: {
                     skipCheck: true
