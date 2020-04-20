@@ -71,7 +71,8 @@ fastify.register(webauthn_perk, {
         },
         cred_options: {
             valid_ids: [], // List of unguessable IDs (strings)
-            prefix: '/cred', // Unguessable IDs are prefixed with this plus /
+            prefix: '/cred', // Unguessable ID paths are prefixed with this plus /
+            store_prefix: false, // Whether to store complete path from root when associating unguessable IDs with public keys
             challenge_timeout: 60000, // Server challenges expire after this (ms)
             fido2_options: {
                 user: {

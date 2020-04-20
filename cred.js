@@ -22,7 +22,9 @@ export default async function (fastify, options) {
     options = options.cred_options || /* istanbul ignore next */ options;
     const valid_ids = new Set(Object.assign({
         valid_ids: []
-    }, options).valid_ids.filter(id => id));
+    }, options).valid_ids
+        .filter(id => id)
+        .map(id => options.store_prefix ? fastify.prefix + id : id));
     fastify.log.info(`valid ids: ${Array.from(valid_ids)}`);
     const challenge_timeout = options.challenge_timeout || 60000;
 
@@ -45,14 +47,6 @@ export default async function (fastify, options) {
             return assertion_expectations;
         }
     }, fido2_options).complete_assertion_expectations;
-
-    // Delete pub keys that aren't passed as argument
-    for (const id of await get_uris()) {
-        if (!valid_ids.has(id)) {
-            fastify.log.info(`removing pub key for id: ${id}`);
-            await remove_pub_key(id);
-        }
-    }
 
     // Use shared-key authenticated encryption for challenges
     const sodium = await SodiumPlus.auto();
@@ -95,11 +89,28 @@ export default async function (fastify, options) {
         }
     }
 
-    for (const id of valid_ids) { // eslint-disable-line require-atomic-updates
-        fastify.log.info(`setting up routes for id: ${id}`);
+    // Store hash of the IDs so path can't be determined from database
+    const valid_hashes = new Set();
+    const valid_hashmap = new Map();
+    for (const id of valid_ids) {
+        const hash = (await sodium.crypto_generichash(id)).toString('hex');
+        valid_hashes.add(hash);
+        valid_hashmap.set(id, hash);
+    }
+
+    // Delete pub keys that aren't passed as argument
+    for (const hash of await get_uris()) {
+        if (!valid_hashes.has(hash)) {
+            fastify.log.info(`removing pub key for hash: ${hash}`);
+            await remove_pub_key(hash);
+        }
+    }
+
+    for (const [id, hash] of valid_hashmap) { // eslint-disable-line require-atomic-updates
+        fastify.log.info(`setting up routes for id: ${id}, hash: ${hash}`);
 
         fastify.get(`/${id}/`, { schema: schemas.get }, async (request, reply) => {
-            const { pub_key, issuer_id } = await get_pub_key_by_uri(id);
+            const { pub_key, issuer_id } = await get_pub_key_by_uri(hash);
             if (pub_key === null) {
                 reply.code(404);
                 const attestation_options = await fido2lib.attestationOptions(fido2_options.attestation_options);
@@ -146,16 +157,16 @@ export default async function (fastify, options) {
                 throw ex;
             }
             const cred_id = toArray(cred_response.authnrData.get('credId'));
-            const issuer_id = await add_pub_key(id, {
+            const issuer_id = await add_pub_key(hash, {
                 pub_key: cred_response.authnrData.get('credentialPublicKeyPem'),
-                cred_id: cred_id
+                cred_id
             });
             await deploy();
             return { cred_id, issuer_id };
         });
 
         fastify.post(`/${id}/`, { schema: schemas.post }, async (request, reply) => {
-            const { pub_key } = await get_pub_key_by_uri(id);
+            const { pub_key } = await get_pub_key_by_uri(hash);
             if (pub_key === null) {
                 const err = new Error('no public key');
                 err.statusCode = 404;
