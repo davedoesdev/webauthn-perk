@@ -3,7 +3,7 @@ import { promisify } from 'util';
 import { Fido2Lib } from '@davedoesdev/fido2-lib';
 import { SodiumPlus } from 'sodium-plus';
 import clone from 'deep-copy';
-import { toArrayBuffer, fix_assertion_types } from './common.js';
+import { toArrayBuffer, fix_assertion_types, hash_id } from './common.js';
 import { cred as schemas } from './dist/schemas.js';
 const default_user = 'Anonymous User';
 
@@ -19,13 +19,9 @@ function toArray(obj, prop) {
 }
 
 export default async function (fastify, options) {
-    options = options.cred_options || /* istanbul ignore next */ options;
-    const valid_ids = new Set(Object.assign({
-        valid_ids: []
-    }, options).valid_ids
-        .filter(id => id)
-        .map(id => options.store_prefix ? fastify.prefix + id : id));
-    fastify.log.info(`valid ids: ${Array.from(valid_ids)}`);
+    const sodium = await SodiumPlus.auto();
+    options = options.cred_options;
+
     const challenge_timeout = options.challenge_timeout || 60000;
 
     const fido2_options = options.fido2_options || /* istanbul ignore next */ {};
@@ -49,7 +45,6 @@ export default async function (fastify, options) {
     }, fido2_options).complete_assertion_expectations;
 
     // Use shared-key authenticated encryption for challenges
-    const sodium = await SodiumPlus.auto();
     const challenge_key = await sodium.crypto_secretbox_keygen();
 
     async function make_challenge(id, type, challenge) {
@@ -92,8 +87,8 @@ export default async function (fastify, options) {
     // Store hash of the IDs so path can't be determined from database
     const valid_hashes = new Set();
     const valid_hashmap = new Map();
-    for (const id of valid_ids) {
-        const hash = (await sodium.crypto_generichash(id)).toString('hex');
+    for (const [id, prefixed_id] of options.valid_ids) {
+        const hash = await hash_id(sodium, prefixed_id);
         valid_hashes.add(hash);
         valid_hashmap.set(id, hash);
     }

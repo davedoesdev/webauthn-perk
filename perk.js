@@ -3,7 +3,8 @@ import url from 'url';
 import { promisify } from 'util';
 import clone from 'deep-copy';
 import Ajv from 'ajv';
-import { fix_assertion_types } from './common.js';
+import { SodiumPlus } from 'sodium-plus';
+import { fix_assertion_types, hash_id } from './common.js';
 import { perk as perk_schemas } from './dist/schemas.js';
 
 const ajv = new Ajv();
@@ -13,11 +14,25 @@ function compile(schema) {
 }
 
 export default async function (fastify, options) {
-    options = options.perk_options || /* istanbul ignore next */ options;
+    const sodium = await SodiumPlus.auto();
+    options = options.perk_options;
+
     const fido2_options = options.fido2_options || /* istanbul ignore next */ {};
 
+    const valid_hashmap = new Map();
+    for (const [id, prefixed_id] of options.valid_ids) {
+        valid_hashmap.set(await hash_id(sodium, prefixed_id), id);
+    }
+
     const authorize = promisify((authz_token, cb) => {
-        options.authz.authorize(authz_token, [], (err, payload, uri, rev, assertion_result) => {
+        options.authz.authorize(authz_token, [], (err, payload, hash, rev, assertion_result) => {
+            if (err) {
+                return cb(err);
+            }
+            const uri = valid_hashmap.get(hash);
+            if (uri === undefined) {
+                return cb(new Error(`no matching id for hash: ${hash}`));
+            }
             cb(err, { payload, uri, rev, assertion_result });
         });
     });

@@ -20,3 +20,7 @@ export function fix_assertion_types(assertion) {
     toArrayBuffer(assertion.response, 'signature');
     toArrayBuffer(assertion.response, 'userHandle');
 }
+
+export async function hash_id(sodium, id) {
+    return (await sodium.crypto_generichash(id)).toString('hex');
+}

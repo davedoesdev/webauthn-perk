@@ -10,6 +10,8 @@ import crypto from 'crypto';
 import mod_fastify from 'fastify';
 import fastify_static from 'fastify-static';
 import axios from 'axios';
+import { SodiumPlus } from 'sodium-plus';
+import { hash_id } from '../common.js';
 const { readFile, writeFile } = fs.promises;
 const randomBytes = promisify(crypto.randomBytes);
 const port = 3000;
@@ -28,13 +30,14 @@ async function make_fastify(port, options) {
         async handler (info) {
             return {
                 uri: info.uri,
+                issuer_id: info.assertion_result.issuer_id,
                 payload: info.payload
             };
         },
         payload_schema: {
             type: 'object',
             required: [
-                'foo',
+                'foo'
             ],
             properties: {
                 foo: { type: 'integer' }
@@ -55,10 +58,11 @@ async function make_fastify(port, options) {
             db_dir: path.join(__dirname, 'store'),
             complete_webauthn_token: options.complete_webauthn_token,
             on_authz: options.on_authz,
-            jwt_audience_uri: audience
+            audience
         },
         cred_options: {
             valid_ids: options.valid_ids,
+            store_prefix: options.store_prefix,
             fido2_options: {
                 new_options: {
                     attestation: 'none'
@@ -72,10 +76,12 @@ async function make_fastify(port, options) {
                     type: 'object',
                     required: [
                         'uri',
+                        'issuer_id',
                         'payload'
                     ],
                     properties: {
                         uri: { type: 'string' },
+                        issuer_id: { type: 'string' },
                         payload: {
                             type: 'object',
                             required: [
@@ -123,7 +129,8 @@ async function make_fastify(port, options) {
     }
 
     fastify.register(webauthn_perk, {
-        webauthn_perk_options: plugin_options
+        webauthn_perk_options: plugin_options,
+        ... options.prefix === undefined ? {} : { prefix: options.prefix }
     });
 
     fastify.register(fastify_static, {
@@ -288,7 +295,8 @@ async function verify(url, options) {
 
 async function perk(cred_url, perk_origin, options) {
     options = Object.assign({
-        valid_status: 200
+        valid_status: 200,
+        audience
     }, options);
 
     return await executeAsync(async (cred_url, audience, perk_url, options) => {
@@ -361,13 +369,16 @@ async function perk(cred_url, perk_origin, options) {
             delete get_response.data.payload.jti; // binary string so causes terminal escapes when logged in test
         }
 
-        return [get_response.data, get_response.status];
-    }, cred_url, audience, `${perk_origin}/perk/`, options);
+        return [get_response.data, get_response.status, issuer_id];
+    }, cred_url, options.audience, `${perk_origin}/perk/`, options);
 }
 
 describe('credentials', function () {
     this.timeout(5 * 60 * 1000);
-    browser.setTimeout({ script: 5 * 60 * 1000 });
+
+    before(function () {
+        browser.setTimeout({ script: 5 * 60 * 1000 });
+    });
 
     it('should return 404', async function () {
         expect(await executeAsync(async url => {
@@ -448,9 +459,10 @@ describe('credentials', function () {
     });
 
     it('should be able to use key info to sign assertion for authorize-jwt', async function () {
-        const [ data, status ] = await perk(urls[0], origin);
+        const [ data, status, issuer_id ] = await perk(urls[0], origin);
         expect(status).to.equal(200);
         expect(data.uri).to.equal(valid_ids[0]);
+        expect(data.issuer_id).to.equal(issuer_id);
         expect(data.payload.aud).to.equal(audience);
         expect(data.payload.foo).to.equal(90);
     });
@@ -495,8 +507,10 @@ describe('credentials', function () {
         const dummy_fastify = {
             addHook() {},
             register(f, opts) {
-                this.f = f;
-                this.opts = opts;
+                if (!this.f) { // cred is registered first
+                    this.f = f;
+                    this.opts = opts;
+                }
             },
             log: fastify.log,
             get() {},
@@ -510,7 +524,7 @@ describe('credentials', function () {
                 db_dir: path.join(__dirname, 'store'),
             },
             cred_options: {
-                valid_ids: valid_ids
+                valid_ids
             }
         });
         await dummy_fastify.f(dummy_fastify, dummy_fastify.opts);
@@ -522,6 +536,8 @@ describe('credentials', function () {
         expect(key_info2).to.eql(key_info);
 
         // then check we delete invalid IDs
+        delete dummy_fastify.f;
+        delete dummy_fastify.opts;
         await webauthn_perk(dummy_fastify, {
             authorize_jwt_options: {
                 db_dir: path.join(__dirname, 'store'),
@@ -597,6 +613,15 @@ describe('credentials', function () {
         expect(data.message).to.equal('signature validation failed');
     });
 
+    it('should not verify token with wrong audience', async function () {
+        const [ data, status ] = await perk(urls[0], origin, {
+            audience: 'urn:webauthn-perk:test2',
+            valid_status: 400
+        });
+        expect(status).to.equal(400);
+        expect(data.message).to.equal('unexpected "aud" claim value');
+    });
+
     it('should fail to use cred ID from second URL', async function () {
         await verify(urls[0], {
             cred_url: urls[1],
@@ -618,7 +643,8 @@ describe('credentials', function () {
             before_verify_called,
             after_verify_called,
             before_register_called,
-            after_register_called
+            after_register_called,
+            issuer_id
         ] = await executeAsync(async (cred_path, perk_path, audience) => {
             // Start the workflow
             const workflow = new (class extends PerkWorkflow {
@@ -662,7 +688,8 @@ describe('credentials', function () {
                 workflow.before_verify_called,
                 workflow.after_verify_called,
                 workflow.before_register_called,
-                workflow.after_register_called
+                workflow.after_register_called,
+                workflow.issuer_id
             ];
         }, `/cred/${valid_ids[2]}/`, '/perk/', audience);
 
@@ -680,6 +707,7 @@ describe('credentials', function () {
 
         expect(perk_response.status).to.equal(200);
         expect(perk_response.data.uri).to.equal(valid_ids[2]);
+        expect(perk_response.data.issuer_id).to.equal(issuer_id);
         expect(perk_response.data.payload.aud).to.equal(audience);
         expect(perk_response.data.payload.foo).to.equal(123456);
     });
@@ -690,7 +718,8 @@ describe('credentials', function () {
             before_verify_called,
             after_verify_called,
             before_register_called,
-            after_register_called
+            after_register_called,
+            issuer_id
         ] = await executeAsync(async (cred_path, perk_path, audience) => {
             // Start the workflow
             const workflow = new (class extends PerkWorkflow {
@@ -734,7 +763,8 @@ describe('credentials', function () {
                 workflow.before_verify_called,
                 workflow.after_verify_called,
                 workflow.before_register_called,
-                workflow.after_register_called
+                workflow.after_register_called,
+                workflow.issuer_id
             ];
         }, `/cred/${valid_ids[2]}/`, '/perk/', audience);
 
@@ -752,6 +782,7 @@ describe('credentials', function () {
 
         expect(perk_response.status).to.equal(200);
         expect(perk_response.data.uri).to.equal(valid_ids[2]);
+        expect(perk_response.data.issuer_id).to.equal(issuer_id);
         expect(perk_response.data.payload.aud).to.equal(audience);
         expect(perk_response.data.payload.foo).to.equal(4574321);
     });
@@ -820,10 +851,9 @@ describe('credentials', function () {
     });
 
     it('should call on_authz', async function () {
-        let called = false;
+        let ks;
         async function on_authz(authz) {
-            expect(authz.keystore).to.exist;
-            called = true;
+            ks = authz.keystore;
         }
 
         const port5 = port + 4;
@@ -833,10 +863,15 @@ describe('credentials', function () {
             on_authz
         });
         const origin5 = `https://localhost:${port5}`;
+        const cred_url5 = `${origin5}/cred/${id5}/`;
 
         await browser.url(`${origin5}/test/test.html`);
+        await auth(cred_url5);
 
-        expect(called).to.be.true;
+        expect(ks).to.exist;
+        const get_uris = promisify(ks.get_uris.bind(ks));
+        const sodium = await SodiumPlus.auto();
+        expect(await get_uris()).to.eql([await hash_id(sodium, id5)]);
     });
 
     it('should by default not verify payload', async function () {
@@ -855,5 +890,99 @@ describe('credentials', function () {
             wrong_type: true
         });
         await perk(cred_url6, origin6);
+    });
+
+    it('should work on prefix', async function () {
+        let ks;
+        async function on_authz(authz) {
+            ks = authz.keystore;
+        }
+
+        const port7 = port + 6;
+        const id7 = (await randomBytes(64)).toString('hex');
+        await make_fastify(port7, {
+            valid_ids: [id7],
+            on_authz,
+            prefix: '/prefix7'
+        });
+        const origin7 = `https://localhost:${port7}`;
+        const cred_url7 = `${origin7}/prefix7/cred/${id7}/`;
+
+        await browser.url(`${origin7}/test/test.html`);
+        await auth(cred_url7);
+
+        expect(ks).to.exist;
+        const get_uris = promisify(ks.get_uris.bind(ks));
+        const sodium = await SodiumPlus.auto();
+        expect(await get_uris()).to.eql([await hash_id(sodium, id7)]);
+
+        await perk(cred_url7, `${origin7}/prefix7`);
+    });
+
+    it('should be able to use prefix when storing public keys', async function () {
+        let ks;
+        async function on_authz(authz) {
+            ks = authz.keystore;
+        }
+
+        const port8 = port + 7;
+        const id8 = (await randomBytes(64)).toString('hex');
+        await make_fastify(port8, {
+            valid_ids: [id8],
+            on_authz,
+            prefix: '/prefix8',
+            store_prefix: true
+        });
+        const origin8 = `https://localhost:${port8}`;
+        const cred_url8 = `${origin8}/prefix8/cred/${id8}/`;
+
+        await browser.url(`${origin8}/test/test.html`);
+        await auth(cred_url8);
+
+        expect(ks).to.exist;
+        const get_uris = promisify(ks.get_uris.bind(ks));
+        const sodium = await SodiumPlus.auto();
+        expect(await get_uris()).to.eql([await hash_id(sodium, `/prefix8/cred/${id8}`)]);
+
+        await perk(cred_url8, `${origin8}/prefix8`);
+    });
+
+    it('should error if stored hash is unrecognised', async function () {
+        const sodium = await SodiumPlus.auto();
+        const port9 = port + 8;
+        const id9 = (await randomBytes(64)).toString('hex');
+
+        const orig_auto = SodiumPlus.auto;
+        let count = 0;
+        SodiumPlus.auto = async function () {
+            let r = orig_auto.apply(this, arguments);
+            if (++count === 2) {
+                r = await r;
+                const orig_crypto_generichash = r.crypto_generichash;
+                r.crypto_generichash = async function (id) {
+                    expect(id).to.equal(id9);
+                    return orig_crypto_generichash.call(this, 'dummy');
+                };
+            }
+            return r;
+        };
+        try {
+            await make_fastify(port9, {
+                valid_ids: [id9]
+            });
+            const origin9 = `https://localhost:${port9}`;
+            const cred_url9 = `${origin9}/cred/${id9}/`;
+
+            await browser.url(`${origin9}/test/test.html`);
+            await auth(cred_url9);
+
+            const [ data, status ] = await perk(cred_url9, origin9, {
+                valid_status: 400
+            });
+            expect(status).to.equal(400);
+            expect(data.message).to.equal(`no matching id for hash: ${await hash_id(sodium, id9)}`);
+        } finally {
+            SodiumPlus.auto = orig_auto;
+        }
     });
 });

@@ -26,23 +26,33 @@ export default async function (fastify, options) {
         await close();
     });
 
-    const perk_options = Object.assign({
-        prefix: '/perk/',
-        authz
-    }, options.perk_options);
-
-    fastify.register(perk, {
-        prefix: perk_options.prefix,
-        perk_options: perk_options
-    });
-
     const cred_options = Object.assign({
         prefix: '/cred/',
-        keystore: authz.keystore
+        keystore: authz.keystore,
+        valid_ids: []
     }, options.cred_options);
+
+    cred_options.valid_ids = new Map(cred_options.valid_ids
+        .filter(id => id)
+        .map(id => [id, cred_options.store_prefix ?
+            `${fastify.prefix}${cred_options.prefix}${id}` : id
+        ]));
+    fastify.log.info(`valid ids: ${Array.from(cred_options.valid_ids.keys())}`);
 
     fastify.register(cred, {
         prefix: cred_options.prefix,
-        cred_options: cred_options
+        cred_options
+    });
+
+    const perk_options = Object.assign({
+        prefix: '/perk/',
+        authz
+    }, options.perk_options, {
+        valid_ids: cred_options.valid_ids
+    });
+
+    fastify.register(perk, {
+        prefix: perk_options.prefix,
+        perk_options
     });
 }
