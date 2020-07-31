@@ -1,18 +1,16 @@
 /* eslint-env node, mocha, browser */
 /* global browser, PerkWorkflow, jwt_encode */
 
-import { promisify } from 'util';
-import path from 'path';
-import fs from 'fs';
-import { Agent } from 'https';
-import { expect } from 'chai';
-import crypto from 'crypto';
-import mod_fastify from 'fastify';
-import fastify_static from 'fastify-static';
-import axios from 'axios';
-import { SodiumPlus } from 'sodium-plus';
-import { hash_id } from '../common.js';
-const { readFile, writeFile } = fs.promises;
+const { promisify } = require('util');
+const path = require('path');
+const { readFile, writeFile } = require('fs').promises;
+const { Agent } = require('https');
+const { expect } = require('chai');
+const crypto = require('crypto');
+const mod_fastify = require('fastify');
+const fastify_static = require('fastify-static');
+const axios = require('axios');
+const { SodiumPlus } = require('sodium-plus');
 const randomBytes = promisify(crypto.randomBytes);
 const port = 3000;
 const origin = `https://localhost:${port}`;
@@ -20,19 +18,27 @@ const audience = 'urn:webauthn-perk:test';
 const valid_ids = [];
 const urls = [];
 
-const webauthn_perk_path = process.env.NYC_OUTPUT_DIR ? 'webauthn-perk' : '..';
+const webauthn_perk_path = `${process.env.NYC_OUTPUT_DIR ? './instrument' : '..'}/plugin.js`
+let hash_id;
+let keystore;
+let webAuthn;
 
 async function make_fastify(port, options) {
     const webauthn_perk = (await import(webauthn_perk_path)).default;
+    ({ hash_id } = await import('../common.js'));
 
     options = Object.assign({
         valid_ids,
         async handler (info) {
             return {
                 uri: info.uri,
-                issuer_id: info.assertion_result.issuer_id,
+                issuer_id: info.credential.issuer_id,
                 payload: info.payload
             };
+        },
+        async on_authz(authz) {
+            keystore = authz.keystore;
+            webAuthn = authz.webAuthn;
         },
         payload_schema: {
             type: 'object',
@@ -58,17 +64,14 @@ async function make_fastify(port, options) {
             db_dir: path.join(__dirname, 'store'),
             complete_webauthn_token: options.complete_webauthn_token,
             on_authz: options.on_authz,
-            audience
+            audience,
+            RPDisplayName: 'webauthn-perk',
+            RPID: 'localhost',
+            RPOrigin: `https://localhost:${port}`
         },
         cred_options: {
             valid_ids: options.valid_ids,
             store_prefix: options.store_prefix,
-            fido2_options: {
-                new_options: {
-                    attestation: 'none'
-                },
-                complete_assertion_expectations: options.complete_assertion_expectations
-            }
         },
         perk_options: {
             response_schema: {
@@ -116,16 +119,12 @@ async function make_fastify(port, options) {
         }
     };
 
-    if (plugin_options.authorize_jwt_options.on_authz === undefined) {
-        delete plugin_options.authorize_jwt_options.on_authz;
-    }
-
-    if (plugin_options.cred_options.fido2_options.complete_assertion_expectations === undefined) {
-        delete plugin_options.cred_options.fido2_options.complete_assertion_expectations;
-    }
-
     if (plugin_options.perk_options.handler === undefined) {
         delete plugin_options.perk_options.handler;
+    }
+
+    if (plugin_options.authorize_jwt_options.complete_webauthn_token === undefined) {
+        delete plugin_options.authorize_jwt_options.complete_webauthn_token;
     }
 
     fastify.register(webauthn_perk, {
@@ -176,13 +175,22 @@ before(async function () {
 async function executeAsync(f, ...args) {
     const r = await browser.executeAsync(function (f, ...args) {
         (async function () {
-            let done = args[args.length - 1];
+            const done = args[args.length - 1];
             function b64url(s) {
                 return btoa(s).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
             }
             window.jwt_encode = function (header, payload) {
                 return b64url(JSON.stringify(header)) + '.' +
                        b64url(JSON.stringify(payload)) + '.';
+            };
+            window.bufferDecode = function (value, modify) {
+                return Uint8Array.from(atob(value), c => c.charCodeAt(0) ^ (modify ? 1 : 0));
+            };
+            window.bufferEncode = function (value) {
+                return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
+                    .replace(/\+/g, "-")
+                    .replace(/\//g, "_")
+                    .replace(/=/g, "");
             };
             try {
                 // We need to use window.eval to stop esm rewriting eval
@@ -206,7 +214,7 @@ async function auth(url, options) {
     }, options);
 
     return await executeAsync(async (url, options) => {
-        const get_response = await axios(options.challenge_url || url, {
+        const get_response = await axios(options.cred_url || url, {
             validateStatus: status => status === 404
         });
 
@@ -216,33 +224,40 @@ async function auth(url, options) {
             });
         }
 
-        const authenticated_challenge = get_response.data.authenticated_challenge;
-        const attestation_options = get_response.data.attestation_options;
+        const { options: reg_options, session_data } = get_response.data;
+        const { publicKey } = reg_options;
+        publicKey.challenge = bufferDecode(publicKey.challenge, options.modify_challenge);
+        publicKey.user.id = bufferDecode(publicKey.user.id);
+        if (publicKey.excludeCredentials) {
+            for (const c of publicKey.excludeCredentials) {
+                c.id = bufferDecode(c.id);
+            }
+        }
 
-        attestation_options.challenge = Uint8Array.from(attestation_options.challenge,
-            x => options.modify_challenge ? x ^ 1 : x);
-        attestation_options.user.id = new TextEncoder('utf-8').encode(attestation_options.user.id);
+        const credential = await navigator.credentials.create(reg_options);
 
-        const cred = await navigator.credentials.create({ publicKey: attestation_options });
+        const { id, rawId, type, response: cred_response } = credential;
+        const { attestationObject, clientDataJSON } = cred_response;
 
-        const attestation_result = {
-            id: options.no_cred_id ? undefined : cred.id,
+        const ccr = {
+            id: options.no_cred_id ? undefined : id,
+            rawId: bufferEncode(rawId),
+            type,
             response: {
-                attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
-                clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
-            },
-            authenticated_challenge
+                attestationObject: bufferEncode(attestationObject),
+                clientDataJSON: bufferEncode(clientDataJSON)
+            }
         };
 
-        const put_response = await axios.put(url, attestation_result, {
+        const put_response = await axios.put(url, { ccr, session_data }, {
             validateStatus: status => status === options.valid_status
         });
 
         return [
-            attestation_result,
+            ccr,
             put_response.data,
             put_response.status,
-            authenticated_challenge
+            session_data
         ];
     }, url, options);
 }
@@ -254,40 +269,40 @@ async function verify(url, options) {
     }, options);
 
     await executeAsync(async (url, options) => {
-        let { cred_id, authenticated_challenge, assertion_options} = (await axios(url)).data;
+        let { options: cred_options, issuer_id, session_data} = (await axios(url)).data;
 
         if (options.cred_url) {
-            ({ cred_id } = (await axios(options.cred_url)).data);
+            ({ options: cred_options } = (await axios(options.cred_url)).data);
         }
 
-        if (options.authenticated_challenge) {
-            authenticated_challenge = options.authenticated_challenge;
+        if (options.session_data) {
+            session_data = options.session_data;
         }
 
-        assertion_options.challenge = Uint8Array.from(assertion_options.challenge,
-            x => options.modify_challenge ? x ^ 1 : x);
+        const { publicKey } = cred_options;
+        publicKey.challenge = bufferDecode(publicKey.challenge, options.modify_challenge);
+        for (const c of publicKey.allowCredentials) {
+            c.id = bufferDecode(c.id);
+        }
 
-        const assertion = await navigator.credentials.get({
-            publicKey: Object.assign(assertion_options, {
-                allowCredentials: [{
-                    id: Uint8Array.from(cred_id),
-                    type: 'public-key'
-                }]
-            })
-        });
+        const assertion = await navigator.credentials.get(cred_options);
+        const { id, rawId, type, response: assertion_response } = assertion;
+        const { authenticatorData, clientDataJSON, signature, userHandle } = assertion_response;
 
-        const assertion_result = {
-            id: assertion.id,
-            response: {
-                authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
-                clientDataJSON: new TextDecoder('utf-8').decode(assertion.response.clientDataJSON),
-                signature: Array.from(new Uint8Array(assertion.response.signature)),
-                userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
+        await axios.post(options.verify_url, {
+            car: {
+                id,
+                rawId: bufferEncode(rawId),
+                type,
+                response: {
+                    authenticatorData: bufferEncode(authenticatorData),
+                    clientDataJSON: bufferEncode(clientDataJSON),
+                    signature: bufferEncode(signature),
+                    userHandle: bufferEncode(userHandle)
+                }
             },
-            authenticated_challenge
-        };
-
-        await axios.post(options.verify_url, assertion_result, {
+            session_data
+        }, {
             validateStatus: status => status === options.valid_status
         });
     }, url, options);
@@ -329,38 +344,45 @@ async function perk(cred_url, perk_origin, options) {
 
         const jwt = generateJWT(payload, expires);
 
-        let { cred_id, issuer_id } = (await axios(cred_url)).data;
+        let { options: cred_options, issuer_id } = (await axios(cred_url)).data;
 
         if (options.issuer_url) {
             ({ issuer_id } = (await axios(options.issuer_url)).data);
         }
 
+        const { publicKey } = cred_options;
+        for (const c of publicKey.allowCredentials) {
+            c.id = bufferDecode(c.id);
+        }
+
         const assertion = await navigator.credentials.get({
+            ...cred_options,
             publicKey: {
+                ...cred_options.publicKey,
                 challenge: new TextEncoder('utf-8').encode(jwt),
-                allowCredentials: [{
-                    id: Uint8Array.from(cred_id),
-                    type: 'public-key'
-                }]
             }
         });
+        const { id, rawId, type, response: assertion_response } = assertion;
+        const { authenticatorData, clientDataJSON, signature, userHandle } = assertion_response;
 
         const assertion_result = {
             issuer_id,
-            assertion: {
-                id: assertion.id,
+            car: {
+                id,
+                rawId: bufferEncode(rawId),
+                type,
                 response: {
-                    authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
-                    clientDataJSON: new TextDecoder('utf-8').decode(assertion.response.clientDataJSON),
-                    signature: Array.from(new Uint8Array(assertion.response.signature)),
-                    userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
+                    authenticatorData: bufferEncode(authenticatorData),
+                    clientDataJSON: bufferEncode(clientDataJSON),
+                    signature: bufferEncode(signature),
+                    userHandle: bufferEncode(userHandle)
                 }
             }
         };
 
         const get_response = await axios(perk_url, {
             params: {
-                assertion_result: JSON.stringify(assertion_result)
+                assertion: JSON.stringify(assertion_result)
             },
             validateStatus: status => status === options.valid_status
         });
@@ -389,7 +411,7 @@ describe('credentials', function () {
     });
 
     it('should return 400 for invalid signature', async function () {
-        const [unused_attestation_result, unused_key_info, status] = await auth(urls[0], {
+        const [unused_ccr, unused_key_info, status] = await auth(urls[0], {
             valid_status: 400,
             modify_challenge: true
         });
@@ -407,7 +429,7 @@ describe('credentials', function () {
         };
 
         try {
-            const [unused_attestation_result, unused_key_info, status] = await auth(urls[0], {
+            const [unused_ccr, unused_key_info, status] = await auth(urls[0], {
                 valid_status: 400
             });
             expect(status).to.equal(400);
@@ -425,19 +447,19 @@ describe('credentials', function () {
     });
 
     it('should return 400 when schema not satisfied', async function () {
-        let [unused_attestation_result, error, status] = await auth(urls[0], {
+        let [unused_ccr, error, status] = await auth(urls[0], {
             no_cred_id: true,
             valid_status: 400
         });
         expect(status).to.equal(400);
-        expect(error.message).to.equal("body should have required property 'id'");
+        expect(error.message).to.equal("body.ccr should have required property 'id'");
     });
 
-    let attestation_result, key_info, authenticated_challenge;
+    let ccr, key_info, session_data;
 
     it('should return challenge and add public key', async function () {
         let status;
-        [attestation_result, key_info, status, authenticated_challenge] = await auth(urls[0]);
+        [ccr, key_info, status, session_data] = await auth(urls[0]);
         expect(status).to.equal(200);
     });
 
@@ -445,17 +467,17 @@ describe('credentials', function () {
         const key_info2 = await executeAsync(async url => {
             return (await axios(url)).data;
         }, urls[0]);
-        delete key_info2.assertion_options;
-        delete key_info2.authenticated_challenge;
+        delete key_info2.session_data;
+        key_info2.options.publicKey.challenge = key_info.options.publicKey.challenge;
         expect(key_info2).to.eql(key_info);
     });
 
     it('should return 409', async function () {
-        expect(await executeAsync(async (url, attestation_result) => {
-            return (await axios.put(url, attestation_result, {
+        expect(await executeAsync(async (url, ccr, session_data) => {
+            return (await axios.put(url, { ccr, session_data }, {
                 validateStatus: status => status === 409
             })).status;
-        }, urls[0], attestation_result)).to.equal(409);
+        }, urls[0], ccr, session_data)).to.equal(409);
     });
 
     it('should be able to use key info to sign assertion for authorize-jwt', async function () {
@@ -480,9 +502,24 @@ describe('credentials', function () {
         await verify(urls[0]);
     });
 
+    it('should detect cloned credential', async function () {
+        const orig_finishLogin = webAuthn.finishLogin;
+        webAuthn.finishLogin = async function(user, session_data, car) {
+            user.credentials[0].Authenticator.SignCount = 100;
+            return orig_finishLogin.call(this, user, session_data, car);
+        };
+        try {
+            await verify(urls[0], {
+                valid_status: 403
+            });
+        } finally {
+            webAuthn.finishLogin = orig_finishLogin;
+        }
+    });
+
     it('should not be able to use assertion challenge to verify', async function () {
         await verify(urls[0], {
-            authenticated_challenge,
+            session_data,
             valid_status: 400
         });
     });
@@ -503,9 +540,14 @@ describe('credentials', function () {
 
     it('should delete keys not in valid ID list', async function () {
         const webauthn_perk = (await import(webauthn_perk_path)).default;
+        const onCloses = [];
 
         const dummy_fastify = {
-            addHook() {},
+            addHook(name, f) {
+                if (name === 'onClose') {
+                    onCloses.push(f);
+                }
+            },
             register(f, opts) {
                 if (!this.f) { // cred is registered first
                     this.f = f;
@@ -522,6 +564,10 @@ describe('credentials', function () {
         await webauthn_perk(dummy_fastify, {
             authorize_jwt_options: {
                 db_dir: path.join(__dirname, 'store'),
+                RPDisplayName: 'webauthn-perk',
+                RPID: 'localhost',
+                RPOrigin: origin,
+                keystore
             },
             cred_options: {
                 valid_ids
@@ -531,8 +577,8 @@ describe('credentials', function () {
         const key_info2 = await executeAsync(async url => {
             return (await axios(url)).data;
         }, urls[0]);
-        delete key_info2.assertion_options;
-        delete key_info2.authenticated_challenge;
+        delete key_info2.session_data;
+        key_info2.options.publicKey.challenge = key_info.options.publicKey.challenge;
         expect(key_info2).to.eql(key_info);
 
         // then check we delete invalid IDs
@@ -541,6 +587,10 @@ describe('credentials', function () {
         await webauthn_perk(dummy_fastify, {
             authorize_jwt_options: {
                 db_dir: path.join(__dirname, 'store'),
+                RPDisplayName: 'webauthn-perk',
+                RPID: 'localhost',
+                RPOrigin: origin,
+                keystore
             },
             cred_options: {
                 valid_ids: valid_ids.slice(1)
@@ -552,6 +602,10 @@ describe('credentials', function () {
                 validateStatus: status => status === 404
             })).status;
         }, urls[0])).to.equal(404);
+
+        for (const onClose of onCloses) {
+            await onClose();
+        }
     });
     
     it('should return 404 on invalid URL', async function () {
@@ -561,11 +615,11 @@ describe('credentials', function () {
             })).status;
         }, 'foobar')).to.equal(404);
 
-        expect(await executeAsync(async (url, attestation_result) => {
-            return (await axios.put(url, attestation_result, {
+        expect(await executeAsync(async (url, ccr, session_data) => {
+            return (await axios.put(url, { ccr, session_data }, {
                 validateStatus: status => status === 404
             })).status;
-        }, 'foobar', attestation_result)).to.equal(404);
+        }, 'foobar', ccr, session_data)).to.equal(404);
     });
 
     it('should return 404 on second URL', async function () {
@@ -577,22 +631,22 @@ describe('credentials', function () {
     });
 
     it('should return 400 on second URL', async function () {
-        expect(await executeAsync(async (url, attestation_result) => {
-            return (await axios.put(url, attestation_result, {
+        expect(await executeAsync(async (url, ccr, session_data) => {
+            return (await axios.put(url, { ccr, session_data }, {
                 validateStatus: status => status === 400
             })).status;
-        }, urls[1], attestation_result)).to.equal(400);
+        }, urls[1], ccr, session_data)).to.equal(400);
     });
 
     it('should fail to use challenge from different ID', async function () {
         await auth(urls[0], {
-            challenge_url: urls[1],
+            cred_url: urls[1],
             valid_status: 400
         });
     });
 
     it('should return challenges per ID', async function () {
-        const [unused_attestation_result, key_info2] = await auth(urls[0], {
+        const [unused_ccr, key_info2] = await auth(urls[0], {
             interleave_get_url: urls[1]
         });
         expect(key_info2).not.to.eql(key_info);
@@ -600,7 +654,7 @@ describe('credentials', function () {
     });
 
     it('should return different key info for second URL', async function () {
-        const [unused_attestation_result, key_info2] = await auth(urls[1]);
+        const [unused_ccr, key_info2] = await auth(urls[1]);
         expect(key_info2).not.to.eql(key_info);
     });
 
@@ -610,7 +664,7 @@ describe('credentials', function () {
             valid_status: 400
         });
         expect(status).to.equal(400);
-        expect(data.message).to.equal('signature validation failed');
+        expect(data.message).to.equal('User does not own the credential returned');
     });
 
     it('should not verify token with wrong audience', async function () {
@@ -823,29 +877,6 @@ describe('credentials', function () {
         await browser.url(`${origin3}/test/test.html`);
         await auth(cred_url3);
         await perk(cred_url3, origin3);
-
-        expect(called).to.be.true;
-    });
-
-    it('should call complete_assertion_expectations', async function () {
-        let called = false;
-        async function complete_assertion_expectations(assertion, assertion_expectations) {
-            called = true;
-            return assertion_expectations;
-        }
-
-        const port4 = port + 3;
-        const id4 = (await randomBytes(64)).toString('hex');
-        await make_fastify(port4, {
-            valid_ids: [id4],
-            complete_assertion_expectations
-        });
-        const origin4 = `https://localhost:${port4}`;
-        const cred_url4 = `${origin4}/cred/${id4}/`;
-
-        await browser.url(`${origin4}/test/test.html`);
-        await auth(cred_url4);
-        await verify(cred_url4);
 
         expect(called).to.be.true;
     });

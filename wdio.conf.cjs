@@ -18,7 +18,7 @@ exports.config = {
     // directory is where your package.json resides, so `wdio` will be called from there.
     //
     specs: [
-        './test/test.js'
+        './test/test.cjs'
     ],
     // Patterns to exclude.
     exclude: [
@@ -114,8 +114,6 @@ exports.config = {
             'security.webauth.webauthn_enable_usbtoken': process.env.CI !== 'true'
         }]
     ],
-
-    execArgv: ['-r', 'esm'],
 
     // Framework you want to run your specs with.
     // The following are supported: Mocha, Jasmine, and Cucumber

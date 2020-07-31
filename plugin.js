@@ -7,30 +7,37 @@ const authorize_jwt = promisify(mod_authorize_jwt);
 
 export default async function (fastify, options) {
     options = options.webauthn_perk_options || options;
-    
+
+    const cred_options = Object.assign({
+        prefix: '/cred/',
+        valid_ids: [],
+        store_prefix: false,
+        registration_options: [],
+        login_options: []
+    }, options.cred_options);
+   
     const authorize_jwt_options = Object.assign({
         db_type: 'pouchdb',
         db_for_update: true,
         no_changes: true,
         no_updates: true,
         WEBAUTHN_MODE: true,
-        async on_authz(unused_authz) {}
+        async on_authz(unused_authz) {},
+        complete_webauthn_token(token, cb) {
+            token.opts = cred_options.login_options;
+            cb(null, token);
+        }
     }, options.authorize_jwt_options);
 
     const authz = await authorize_jwt(authorize_jwt_options);
     await authorize_jwt_options.on_authz(authz);
 
     fastify.addHook('onClose', async function () {
-        const ks = authz.keystore;
-        const close = promisify(ks.close.bind(ks));
-        await close();
+        await promisify(authz.close.bind(authz))();
     });
 
-    const cred_options = Object.assign({
-        prefix: '/cred/',
-        keystore: authz.keystore,
-        valid_ids: []
-    }, options.cred_options);
+    cred_options.keystore = authz.keystore;
+    cred_options.webAuthn = authz.webAuthn;
 
     cred_options.valid_ids = new Map(cred_options.valid_ids
         .filter(id => id)

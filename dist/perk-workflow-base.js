@@ -14,16 +14,41 @@ const response_schemas = {
     }
 };
 
-function validate(schema, response) {
-    if (!schema(response.data)) {
-        throw new Error(ajv.errorsText(schema.errors));
+// Base64 to ArrayBuffer
+function bufferDecode(value) {
+    return Uint8Array.from(atob(value), c => c.charCodeAt(0));
+}
+
+// ArrayBuffer to URLBase64
+function bufferEncode(value) {
+    return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=/g, "");
+}
+
+function decodeRegistrationOptions(options) {
+    const { publicKey } = options;
+    publicKey.challenge = bufferDecode(publicKey.challenge);
+    publicKey.user.id = bufferDecode(publicKey.user.id);
+    if (publicKey.excludeCredentials) {
+        for (const c of publicKey.excludeCredentials) {
+            c.id = bufferDecode(c.id);
+        }
     }
 }
 
-function toUint8Array(obj, prop) {
-    const v = obj[prop];
-    if (v) {
-        obj[prop] = Uint8Array.from(v);
+function decodeLoginOptions(options) {
+    const { publicKey } = options;
+    publicKey.challenge = bufferDecode(publicKey.challenge);
+    for (const c of publicKey.allowCredentials) {
+        c.id = bufferDecode(c.id);
+    }
+}
+
+function validate(schema, response) {
+    if (!schema(response.data)) {
+        throw new Error(ajv.errorsText(schema.errors));
     }
 }
 
@@ -53,97 +78,104 @@ export class PerkWorkflowBase {
 
     async register(signal) {
         // Unpack the options
-        const { attestation_options, authenticated_challenge } = this.get_result;
-        toUint8Array(attestation_options, 'challenge');
-        toUint8Array(attestation_options, 'rawChallenge');
-        attestation_options.user.id = new TextEncoder().encode(attestation_options.user.id);
+        const { options, session_data } = this.get_result;
+        decodeRegistrationOptions(options);
 
         // Create a new credential and sign the challenge.
-        const cred = await navigator.credentials.create({
-            publicKey: Object.assign(attestation_options, this.options.attestation_options),
+        const credential = await navigator.credentials.create({
+            ...options,
+            ...{
+                publicKey: {
+                    ...options.publicKey,
+                    ...this.options.attestation_options,
+                }
+            },
             signal
         });
 
         // Register
-        const attestation_result = {
-            id: cred.id,
-            response: {
-                attestationObject: Array.from(new Uint8Array(cred.response.attestationObject)),
-                clientDataJSON: new TextDecoder('utf-8').decode(cred.response.clientDataJSON)
-            },
-            authenticated_challenge
-        };
+        const { id, rawId, type, response: cred_response } = credential;
+        const { attestationObject, clientDataJSON } = cred_response;
 
-        const put_response = await this.options.axios.put(this.options.cred_path, attestation_result);
+        const put_response = await this.options.axios.put(this.options.cred_path, {
+            ccr: {
+                id,
+                rawId: bufferEncode(rawId),
+                type,
+                response: {
+                    attestationObject: bufferEncode(attestationObject),
+                    clientDataJSON: bufferEncode(clientDataJSON)
+                }
+            },
+            session_data
+        });
         validate(response_schemas.put[put_response.status], put_response);
 
-        ({ cred_id: this.cred_id, issuer_id: this.issuer_id } = put_response.data);
-        toUint8Array(this, 'cred_id');
+        ({ options: this.cred_options, issuer_id: this.issuer_id } = put_response.data);
+        decodeLoginOptions(this.cred_options);
     }
 
     unpack_result() {
         // Unpack the IDs
-        ({ cred_id: this.cred_id, issuer_id: this.issuer_id } = this.get_result);
-        toUint8Array(this, 'cred_id');
+        ({ options: this.cred_options, issuer_id: this.issuer_id } = this.get_result);
+        decodeLoginOptions(this.cred_options);
+    }
+
+    make_car(assertion) {
+        const { id, rawId, type, response: assertion_response } = assertion;
+        const { authenticatorData, clientDataJSON, signature, userHandle } = assertion_response;
+        return {
+            id,
+            rawId: bufferEncode(rawId),
+            type,
+            response: {
+                authenticatorData: bufferEncode(authenticatorData),
+                clientDataJSON: bufferEncode(clientDataJSON),
+                signature: bufferEncode(signature),
+                userHandle: bufferEncode(userHandle)
+            }
+        };
     }
 
     async verify(signal) {
         this.unpack_result();
 
-        const { assertion_options, authenticated_challenge } = this.get_result;
-        toUint8Array(assertion_options, 'challenge');
-        toUint8Array(assertion_options, 'rawChallenge');
+        const { session_data } = this.get_result;
 
         // Sign challenge with credential
         const assertion = await navigator.credentials.get({
-            publicKey: Object.assign(assertion_options, {
-                allowCredentials: [{
-                    id: this.cred_id,
-                    type: 'public-key'
-                }]
-            }, this.options.assertion_options),
+            ...this.cred_options,
+            ...{
+                publicKey: {
+                    ...this.cred_options.publicKey,
+                    ...this.options.assertion_options,
+                }
+            },
             signal
         });
             
         // Authenticate
-        const assertion_result = {
-            id: assertion.id,
-            response: {
-                authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
-                clientDataJSON: new TextDecoder('utf-8').decode(assertion.response.clientDataJSON),
-                signature: Array.from(new Uint8Array(assertion.response.signature)),
-                userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
-            },
-            authenticated_challenge
-        };
-        await this.options.axios.post(this.options.cred_path, assertion_result);
+        await this.options.axios.post(this.options.cred_path, {
+            car: this.make_car(assertion),
+            session_data
+        });
     }
 
     async perk_assertion(jwt, signal) {
         // Sign JWT
-        const assertion = await navigator.credentials.get({
-            publicKey: Object.assign({
-                challenge: new TextEncoder().encode(jwt),
-                allowCredentials: [{
-                    id: this.cred_id,
-                    type: 'public-key'
-                }]
-            }, this.options.assertion_options),
-            signal
-        });
-
-        // Make assertion result
         return {
             issuer_id: this.issuer_id,
-            assertion: {
-                id: assertion.id,
-                response: {
-                    authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
-                    clientDataJSON: new TextDecoder('utf-8').decode(assertion.response.clientDataJSON),
-                    signature: Array.from(new Uint8Array(assertion.response.signature)),
-                    userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
-                }
-            }
+            car: this.make_car(await navigator.credentials.get({
+                ...this.cred_options,
+                ...{
+                    publicKey: {
+                        ...this.cred_options.publicKey,
+                        ...this.options.assertion_options,
+                        challenge: new TextEncoder().encode(jwt)
+                    }
+                },
+                signal
+            }))
         };
     }
 
@@ -152,7 +184,7 @@ export class PerkWorkflowBase {
         const perk_url = new URL(location.href);
         perk_url.pathname = this.options.perk_path;
         const params = new URLSearchParams();
-        params.set('assertion_result', JSON.stringify(await this.perk_assertion(jwt)));
+        params.set('assertion', JSON.stringify(await this.perk_assertion(jwt)));
         perk_url.search = params.toString();
         return perk_url;
     }
@@ -170,7 +202,7 @@ export class PerkWorkflowBase {
             await this.register();
             await this.after_register();
         }
-        // Now we have the credential ID (identifying the private key)
+        // Now we have the credential options (identifying the private key)
         // and the issuer ID (identifying the public key)
     }
 

@@ -1,11 +1,11 @@
 /*eslint-env node */
 import url from 'url';
 import { promisify } from 'util';
-import clone from 'deep-copy';
 import Ajv from 'ajv';
-import { SodiumPlus } from 'sodium-plus';
-import { fix_assertion_types, hash_id } from './common.js';
-import { perk as perk_schemas } from './dist/schemas.js';
+import sodium_plus from 'sodium-plus';
+const { SodiumPlus } = sodium_plus;
+import { hash_id, ErrorWithStatus } from './common.js';
+import { perk as make_perk_schemas } from './dist/schemas.js';
 
 const ajv = new Ajv();
 
@@ -14,18 +14,27 @@ function compile(schema) {
 }
 
 export default async function (fastify, options) {
+    const {
+        valid_ids,
+        authz,
+        schemas: perk_schemas,
+        payload_schema,
+        response_schema,
+        handler
+    } = Object.assign({
+        async handler() {
+            throw new Error('missing handler');
+        }
+    }, options.perk_options);
+
     const sodium = await SodiumPlus.auto();
-    options = options.perk_options;
-
-    const fido2_options = options.fido2_options || /* istanbul ignore next */ {};
-
     const valid_hashmap = new Map();
-    for (const [id, prefixed_id] of options.valid_ids) {
+    for (const [id, prefixed_id] of valid_ids) {
         valid_hashmap.set(await hash_id(sodium, prefixed_id), id);
     }
 
     const authorize = promisify((authz_token, cb) => {
-        options.authz.authorize(authz_token, [], (err, payload, hash, rev, assertion_result) => {
+        authz.authorize(authz_token, [], (err, payload, hash, rev, credential) => {
             if (err) {
                 return cb(err);
             }
@@ -33,24 +42,18 @@ export default async function (fastify, options) {
             if (uri === undefined) {
                 return cb(new Error(`no matching id for hash: ${hash}`));
             }
-            cb(err, { payload, uri, rev, assertion_result });
+            cb(err, { payload, uri, rev, credential });
         });
     });
 
-    const handler = Object.assign({
-        async handler() {
-            throw new Error('missing handler');
-        }
-    }, options).handler;
-
-    const schemas = options.schemas || perk_schemas(options);
-    const payload_schema = compile(schemas.payload || options.payload_schema);
+    const schemas = perk_schemas || make_perk_schemas(response_schema);
+    const validate_payload = compile(schemas.payload || payload_schema);
 
     fastify.get('/', { schema: schemas.get }, async (request, reply) => {
         const post_response = await fastify.inject({
             method: 'POST',
             url: url.parse(request.raw.url).pathname,
-            payload: request.query.assertion_result,
+            payload: request.query.assertion,
             headers: {
                 'content-type': 'application/json',
                 'host': request.headers.host
@@ -63,37 +66,15 @@ export default async function (fastify, options) {
     });
 
     fastify.post('/', { schema: schemas.post }, async (request, reply) => {
-        const assertion = clone(request.body.assertion);
-        fix_assertion_types(assertion);
-        // complete_webauthn_token passed to authorize-jwt can override these
-        const expectations = Object.assign({
-            // fido2-lib expects https
-            origin: `https://${request.headers.host}`,
-            factor: 'either',
-            prevCounter: 0,
-            // not all authenticators can store user handles
-            userHandle: assertion.response.userHandle
-        }, fido2_options.assertion_expectations);
-        const token = {
-            issuer_id: request.body.issuer_id,
-            assertion,
-            request,
-            expected_origin: expectations.origin,
-            expected_factor: expectations.factor,
-            prev_counter: expectations.prevCounter,
-            expected_user_handle: expectations.userHandle
-        };
         let info;
         try {
-            info = await authorize(token);
+            info = await authorize(request.body);
         } catch (ex) {
             ex.statusCode = 400;
             throw ex;
         }
-        if (payload_schema && !payload_schema(info.payload)) {
-            const ex = new Error(ajv.errorsText(payload_schema.errors));
-            ex.statusCode = 400;
-            throw ex;
+        if (validate_payload && !validate_payload(info.payload)) {
+            throw new ErrorWithStatus(ajv.errorsText(validate_payload.errors), 400);
         }
         return await handler(info, request, reply);
     });

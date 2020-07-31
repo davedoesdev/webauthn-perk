@@ -1,22 +1,27 @@
 /* eslint-env node */
 /* eslint-disable no-console */
 
-import path from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import fs from 'fs';
 import crypto from 'crypto';
 import { promisify } from 'util';
 import mod_fastify from 'fastify';
 import fastify_static from 'fastify-static';
-import webauthn_perk from '..';
+import webauthn_perk from '../plugin.js';
 const readFile = fs.promises.readFile;
 const randomBytes = promisify(crypto.randomBytes);
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const port = 3000;
+const origin = `https://localhost:${port}`;
 
 (async function () {
     const fastify = mod_fastify({
         logger: true,
         https: {
-            key: await readFile(path.join(__dirname, 'keys', 'server.key')),
-            cert: await readFile(path.join(__dirname, 'keys', 'server.crt'))
+            key: await readFile(join(__dirname, 'keys', 'server.key')),
+            cert: await readFile(join(__dirname, 'keys', 'server.crt'))
         }
     });
 
@@ -24,29 +29,15 @@ const randomBytes = promisify(crypto.randomBytes);
 
     fastify.register(webauthn_perk, {
         authorize_jwt_options: {
-            db_dir: path.join(__dirname, 'store')
+            db_dir: join(__dirname, 'store'),
+            RPDisplayName: 'example',
+            RPID: 'localhost',
+            RPOrigin: origin
         },
         cred_options: {
             valid_ids: [id],
-            fido2_options: {
-                new_options: {
-                    attestation: 'none',
-                    //authenticatorUserVerification: 'required'
-                },
-                assertion_expectations: {
-                    //factor: 'first'
-                },
-                attestation_expectations: {
-                    //factor: 'first'
-                }
-            }
         },
         perk_options: {
-            fido2_options: {
-                assertion_expectations: {
-                    //factor: 'first'
-                }
-            },
             response_schema: {
                 200: {
                     type: 'string'
@@ -59,18 +50,18 @@ const randomBytes = promisify(crypto.randomBytes);
     });
 
     fastify.register(fastify_static, {
-        root: path.join(__dirname, 'fixtures'),
+        root: join(__dirname, 'fixtures'),
         prefix: `/${id}`,
         index: 'example.html'
     });
 
     fastify.register(fastify_static, {
-        root: path.join(__dirname, '..', 'dist'),
+        root: join(__dirname, '..', 'dist'),
         prefix: `/${id}/dist`,
         decorateReply: false
     });
 
     await fastify.listen(3000);
 
-    console.log(`Please visit https://localhost:3000/${id}/`);
+    console.log(`Please visit ${origin}/${id}/`);
 })();

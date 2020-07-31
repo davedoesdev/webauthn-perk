@@ -1,7 +1,7 @@
 /*eslint-env node */
 
-import path from 'path';
-import load_grunt_tasks from 'load-grunt-tasks';
+const path = require('path');
+const load_grunt_tasks = require('load-grunt-tasks');
 
 const mod_path = path.join('.', 'node_modules');
 const bin_path = path.join(mod_path, '.bin');
@@ -11,15 +11,15 @@ const wdio_path = path.join(bin_path, 'wdio');
 const grunt_path = path.join(bin_path, 'grunt');
 
 const coverage_path = path.join(__dirname, '.nyc_output');
-const instrument_path = 'test/node_modules/webauthn-perk';
+const instrument_path = 'test/instrument';
 
-export default function (grunt) {
+module.exports = function (grunt) {
     grunt.initConfig({
         eslint: {
             target: [
                 '*.js',
                 'test/**/*.js',
-                '!test/node_modules/**/*.js',
+                '!test/instrument/**/*.js',
                 'dist/**/*.js',
                 '!dist/axios.js',
                 '!dist/ajv.bundle.js'
@@ -27,14 +27,14 @@ export default function (grunt) {
         },
 
         exec: {
-            test: `node -r esm ${wdio_path}`,
+            test: `${wdio_path} run wdio.conf.cjs`,
             wdio_cleanup: './test/wdio_cleanup.sh',
 
             instrument: {
                 cmd: [
-                    `${babel_path} common.js cred.js index.js perk.js plugin.js --out-dir ${instrument_path}`,
+                    `${babel_path} common.js cred.js perk.js plugin.js --out-dir ${instrument_path}`,
                     `mkdir -p ${instrument_path}/dist`,
-                    `cp dist/schemas.js ${instrument_path}/dist`,
+                    `cp dist/schemas.js dist/schemas.webauthn4js.js ${instrument_path}/dist`,
                 ].join('&&'),
                 options: {
                     env: Object.assign({}, process.env, {
@@ -46,7 +46,7 @@ export default function (grunt) {
             cover: {
                 cmd: [
                     `mkdir -p '${coverage_path}'`,
-                    `${grunt_path} test`
+                    `${grunt_path} --gruntfile Gruntfile.cjs test`
                 ].join('&&'),
                 options: {
                     env: Object.assign({}, process.env, {
@@ -75,6 +75,17 @@ export default function (grunt) {
                 footer: '\nreturn Ajv; }).call({});',
                 files: {
                     './dist/ajv.bundle.js': path.join(path.dirname(require.resolve('ajv')), '..', 'dist', 'ajv.bundle.js')
+                },
+                options: {
+                    skipCheck: true
+                }
+            },
+
+            schemas: {
+                header: '/* eslint indent: [ error, 2 ] */ export default ',
+                footer: ';',
+                files: {
+                    './dist/schemas.webauthn4js.js': path.join(path.dirname(require.resolve('webauthn4js')), 'schemas', 'schemas.json')
                 },
                 options: {
                     skipCheck: true
@@ -122,4 +133,4 @@ export default function (grunt) {
         this.requires(['exec:cover_check']);
         return true;
     });
-}
+};

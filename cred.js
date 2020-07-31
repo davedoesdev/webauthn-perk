@@ -1,83 +1,73 @@
 /*eslint-env node */
 import { promisify } from 'util';
-import { Fido2Lib } from '@davedoesdev/fido2-lib';
-import { SodiumPlus } from 'sodium-plus';
-import clone from 'deep-copy';
-import { toArrayBuffer, fix_assertion_types, hash_id } from './common.js';
+import sodium_plus from 'sodium-plus';
+const { SodiumPlus } = sodium_plus;
+import { hash_id, ErrorWithStatus } from './common.js';
 import { cred as schemas } from './dist/schemas.js';
-const default_user = 'Anonymous User';
-
-function toArray(obj, prop) {
-    let v = prop ? obj[prop] : obj;
-    if (v) {
-        v = Array.from(Buffer.from(v));
-        if (prop) {
-            obj[prop] = v;
-        }
-    }
-    return v;
-}
 
 export default async function (fastify, options) {
-    const sodium = await SodiumPlus.auto();
-    options = options.cred_options;
+    const {
+        keystore,
+        webAuthn,
+        valid_ids,
+        session_data_timeout,
+        users,
+        default_user,
+        registration_options,
+        login_options
+    } = Object.assign({
+        session_data_timeout: 60000,
+        users: {},
+        default_user: {
+            id: 'anonymous',
+            name: 'Anonymous',
+            displayName: 'Anonymous'
+        }
+    }, options.cred_options);
 
-    const challenge_timeout = options.challenge_timeout || 60000;
-
-    const fido2_options = options.fido2_options || /* istanbul ignore next */ {};
-    const fido2lib = new Fido2Lib(fido2_options.new_options);
-
-    const ks = options.keystore;
-    const get_uris = promisify(ks.get_uris.bind(ks));
-    const add_pub_key = promisify(ks.add_pub_key.bind(ks));
-    const remove_pub_key = promisify(ks.remove_pub_key.bind(ks));
+    const get_uris = promisify(keystore.get_uris.bind(keystore));
+    const add_pub_key = promisify(keystore.add_pub_key.bind(keystore));
+    const remove_pub_key = promisify(keystore.remove_pub_key.bind(keystore));
     const get_pub_key_by_uri = promisify((uri, cb) => {
-        ks.get_pub_key_by_uri(uri, (err, pub_key, issuer_id) => {
-            cb(err, { pub_key, issuer_id });
+        keystore.get_pub_key_by_uri(uri, (err, user, issuer_id) => {
+            cb(err, { user, issuer_id });
         });
     });
-    const deploy = promisify(ks.deploy.bind(ks));
-
-    const complete_assertion_expectations = Object.assign({
-        async complete_assertion_expectations(assertion, assertion_expectations) {
-            return assertion_expectations;
-        }
-    }, fido2_options).complete_assertion_expectations;
+    const deploy = promisify(keystore.deploy.bind(keystore));
 
     // Use shared-key authenticated encryption for challenges
-    const challenge_key = await sodium.crypto_secretbox_keygen();
+    const sodium = await SodiumPlus.auto();
+    const session_data_key = await sodium.crypto_secretbox_keygen();
 
-    async function make_challenge(id, type, challenge) {
+    async function make_secret_session_data(id, type, session_data) {
         const nonce = await sodium.randombytes_buf(
             sodium.CRYPTO_SECRETBOX_NONCEBYTES);
         return {
-            ciphertext: toArray(await sodium.crypto_secretbox(
-                JSON.stringify([ id, type, challenge, Date.now() ]),
+            ciphertext: (await sodium.crypto_secretbox(
+                JSON.stringify([ id, type, session_data, Date.now() ]),
                 nonce,
-                challenge_key)),
-            nonce: toArray(nonce)
+                session_data_key)).toString('base64'),
+            nonce: nonce.toString('base64')
         };
     }
 
-    async function verify_challenge(expected_id, expected_type, obj) {
+    async function verify_secret_session_data(expected_id, expected_type, secret_session_data) {
         try {
-            const authenticated_challenge = obj.authenticated_challenge;
-            delete obj.authenticated_challenge;
-            const [ id, type, challenge, timestamp ] = JSON.parse(
+            const [ id, type, session_data, timestamp ] = JSON.parse(
                 await sodium.crypto_secretbox_open(
-                    Buffer.from(authenticated_challenge.ciphertext),
-                    Buffer.from(authenticated_challenge.nonce),
-                    challenge_key));
+                    Buffer.from(secret_session_data.ciphertext, 'base64'),
+                    Buffer.from(secret_session_data.nonce, 'base64'),
+                    session_data_key));
             if (id !== expected_id) {
                 throw new Error('wrong ID');
             }
             if (type !== expected_type) {
                 throw new Error('wrong type');
             }
-            if ((timestamp + challenge_timeout) <= Date.now('dummy' /* for test */)) {
-                throw new Error('challenge timed out');
+            if ((timestamp + session_data_timeout) <= Date.now('dummy' /* for test */)) {
+                throw new Error('session timed out');
             }
-            return challenge;
+            return session_data;
         } catch (ex) {
             ex.statusCode = 400;
             throw ex;
@@ -87,7 +77,7 @@ export default async function (fastify, options) {
     // Store hash of the IDs so path can't be determined from database
     const valid_hashes = new Set();
     const valid_hashmap = new Map();
-    for (const [id, prefixed_id] of options.valid_ids) {
+    for (const [id, prefixed_id] of valid_ids) {
         const hash = await hash_id(sodium, prefixed_id);
         valid_hashes.add(hash);
         valid_hashmap.set(id, hash);
@@ -104,93 +94,74 @@ export default async function (fastify, options) {
     for (const [id, hash] of valid_hashmap) { // eslint-disable-line require-atomic-updates
         fastify.log.info(`setting up routes for id: ${id}, hash: ${hash}`);
 
+        const empty_user = Object.assign({}, users[id] || default_user, {
+            credentials: []
+        });
+
         fastify.get(`/${id}/`, { schema: schemas.get }, async (request, reply) => {
-            const { pub_key, issuer_id } = await get_pub_key_by_uri(hash);
-            if (pub_key === null) {
+            const { user, issuer_id } = await get_pub_key_by_uri(hash);
+            if (user === null) {
                 reply.code(404);
-                const attestation_options = await fido2lib.attestationOptions(fido2_options.attestation_options);
-                toArray(attestation_options, 'challenge');
-                toArray(attestation_options, 'rawChallenge');
-                attestation_options.user = Object.assign({
-                    name: default_user,
-                    displayName: default_user,
-                    id: default_user
-                }, attestation_options.user, fido2_options.user);
-                const authenticated_challenge = await make_challenge(id, 'attestation', attestation_options.challenge);
-                return { attestation_options, authenticated_challenge };
+                const {
+                    options,
+                    sessionData
+                } = await webAuthn.beginRegistration(empty_user, ...registration_options);
+                return {
+                    options,
+                    session_data: await make_secret_session_data(
+                        id, 'registration', sessionData)
+                };
             }
-            const assertion_options = await fido2lib.assertionOptions(fido2_options.assertion_options);
-            toArray(assertion_options, 'challenge');
-            toArray(assertion_options, 'rawChallenge');
-            const authenticated_challenge = await make_challenge(id, 'assertion', assertion_options.challenge);
+            const { options, sessionData } = await webAuthn.beginLogin(user, ...login_options);
             return {
-                assertion_options,
-                authenticated_challenge,
-                cred_id: pub_key.cred_id,
-                issuer_id
+                issuer_id,
+                options,
+                session_data: await make_secret_session_data(
+                    id, 'login', sessionData)
             };
         });
 
         fastify.put(`/${id}/`, { schema: schemas.put }, async request => {
-            const cred = clone(request.body);
-            const challenge = await verify_challenge(id, 'attestation', cred);
-            toArrayBuffer(cred, 'id', 'base64');
-            toArrayBuffer(cred.response, 'attestationObject');
-            toArrayBuffer(cred.response, 'clientDataJSON');
-            let cred_response;
+            const session_data = await verify_secret_session_data(
+                id, 'registration', request.body.session_data);
+            let credential;
             try {
-                cred_response = await fido2lib.attestationResult(
-                    cred,
-                    Object.assign({
-                        // fido2-lib expects https
-                        origin: `https://${request.headers.host}`,
-                        challenge,
-                        factor: 'either'
-                    }, fido2_options.attestation_expectations));
+                credential = await webAuthn.finishRegistration(
+                    empty_user, session_data, request.body.ccr);
             } catch (ex) {
                 ex.statusCode = 400;
                 throw ex;
             }
-            const cred_id = toArray(cred_response.authnrData.get('credId'));
-            const issuer_id = await add_pub_key(hash, {
-                pub_key: cred_response.authnrData.get('credentialPublicKeyPem'),
-                cred_id
+            const user = Object.assign({}, empty_user, {
+                credentials: [credential]
             });
+            const issuer_id = await add_pub_key(hash, user);
             await deploy();
-            return { cred_id, issuer_id };
+            const { options } = await webAuthn.beginLogin(user, ...login_options);
+            return { issuer_id, options };
         });
 
         fastify.post(`/${id}/`, { schema: schemas.post }, async (request, reply) => {
-            const { pub_key } = await get_pub_key_by_uri(hash);
-            if (pub_key === null) {
-                const err = new Error('no public key');
-                err.statusCode = 404;
-                throw err;
+            const { user } = await get_pub_key_by_uri(hash);
+            if (user === null) {
+                throw new ErrorWithStatus('no user', 404);
             }
-            const assertion = clone(request.body);
-            const challenge = await verify_challenge(id, 'assertion', assertion);
-            fix_assertion_types(assertion);
-            const userHandle = Object.assign({
-                // not all authenticators can store user handles
-                userHandle: null
-            }, assertion.response).userHandle;
-            const assertion_expectations = Object.assign({
-                // fido2-lib expects https
-                origin: `https://${request.headers.host}`,
-                challenge,
-                factor: 'either',
-                prevCounter: 0,
-                userHandle: userHandle,
-                publicKey: pub_key.pub_key
-            }, fido2_options.assertion_expectations);
+            const session_data = await verify_secret_session_data(
+                id, 'login', request.body.session_data);
+            let credential;
             try {
-                await fido2lib.assertionResult(
-                    assertion,
-                    await complete_assertion_expectations(assertion, assertion_expectations));
+                credential = await webAuthn.finishLogin(
+                    user, session_data, request.body.car);
             } catch (ex) {
                 ex.statusCode = 400;
                 throw ex;
             }
+            if (credential.Authenticator.CloneWarning) {
+                throw new ErrorWithStatus('credential appears to be cloned', 403);
+            }
+            // Note we don't update SignCout because the credential is expected to be used
+            // to sign assertions which are given out as perks, which (a) may be duplicated
+            // and (b) may be used in any order.
             reply.code(204);
         });
     }
