@@ -19,7 +19,7 @@ Perk pattern (thanks to https://github.com/emlun[Emil Lundberg] for https://gith
 13. Alice's server verifies the assertion using Alice's public key.
 14. Bob receives a perk, i.e. Alice's Web server provides some service to Bob.
 
-**Note:** From version 6.0.0, `webauth-perk` uses https://github.com/davedoesdev/webauthn4js[WebAuthn4JS] instead of https://github.com/webauthn-open-source/fido2-lib[fido2-lib] and the API has changed accordingly.
+**Note:** From version 6.0.0, `webauthn-perk` uses https://github.com/davedoesdev/webauthn4js[WebAuthn4JS] instead of https://github.com/webauthn-open-source/fido2-lib[fido2-lib] and the API has changed accordingly.
 
 == Example
 
