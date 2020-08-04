@@ -314,21 +314,21 @@ link:LICENCE[MIT]
 
 [source,bash]
 ----
-grunt test
+grunt --gruntfile Gruntfile.cjs test
 ----
 
 == Lint
 
 [source,bash]
 ----
-grunt lint
+grunt --gruntfile Gruntfile.cjs lint
 ----
 
 == Coverage
 
 [source,bash]
 ----
-grunt coverage
+grunt --gruntfile Gruntfile.cjs coverage
 ----
 
 https://istanbul.js.org/[Istanbul] results are available 
