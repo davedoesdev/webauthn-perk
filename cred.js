@@ -1,78 +1,24 @@
 /*eslint-env node */
-import { promisify } from 'util';
-import sodium_plus from 'sodium-plus';
-const { SodiumPlus } = sodium_plus;
-import { hash_id, ErrorWithStatus } from './common.js';
+import {
+    hash_id,
+    make_secret_session_data,
+    register,
+    login
+} from './common.js';
 import { cred as schemas } from './dist/schemas.js';
 
 export default async function (fastify, options) {
     const {
         keystore,
         webAuthn,
-        valid_ids,
+        sodium,
+        session_data_key,
         session_data_timeout,
-        users,
-        default_user,
+        valid_ids,
+        empty_user,
         registration_options,
         login_options
-    } = Object.assign({
-        session_data_timeout: 60000,
-        users: {},
-        default_user: {
-            id: 'anonymous',
-            name: 'Anonymous',
-            displayName: 'Anonymous'
-        }
-    }, options.cred_options);
-
-    const get_uris = promisify(keystore.get_uris.bind(keystore));
-    const add_pub_key = promisify(keystore.add_pub_key.bind(keystore));
-    const remove_pub_key = promisify(keystore.remove_pub_key.bind(keystore));
-    const get_pub_key_by_uri = promisify((uri, cb) => {
-        keystore.get_pub_key_by_uri(uri, (err, user, issuer_id) => {
-            cb(err, { user, issuer_id });
-        });
-    });
-    const deploy = promisify(keystore.deploy.bind(keystore));
-
-    // Use shared-key authenticated encryption for challenges
-    const sodium = await SodiumPlus.auto();
-    const session_data_key = await sodium.crypto_secretbox_keygen();
-
-    async function make_secret_session_data(id, type, session_data) {
-        const nonce = await sodium.randombytes_buf(
-            sodium.CRYPTO_SECRETBOX_NONCEBYTES);
-        return {
-            ciphertext: (await sodium.crypto_secretbox(
-                JSON.stringify([ id, type, session_data, Date.now() ]),
-                nonce,
-                session_data_key)).toString('base64'),
-            nonce: nonce.toString('base64')
-        };
-    }
-
-    async function verify_secret_session_data(expected_id, expected_type, secret_session_data) {
-        try {
-            const [ id, type, session_data, timestamp ] = JSON.parse(
-                await sodium.crypto_secretbox_open(
-                    Buffer.from(secret_session_data.ciphertext, 'base64'),
-                    Buffer.from(secret_session_data.nonce, 'base64'),
-                    session_data_key));
-            if (id !== expected_id) {
-                throw new Error('wrong ID');
-            }
-            if (type !== expected_type) {
-                throw new Error('wrong type');
-            }
-            if ((timestamp + session_data_timeout) <= Date.now('dummy' /* for test */)) {
-                throw new Error('session timed out');
-            }
-            return session_data;
-        } catch (ex) {
-            ex.statusCode = 400;
-            throw ex;
-        }
-    }
+    } = options.cred_options;
 
     // Store hash of the IDs so path can't be determined from database
     const valid_hashes = new Set();
@@ -84,22 +30,18 @@ export default async function (fastify, options) {
     }
 
     // Delete pub keys that aren't passed as argument
-    for (const hash of await get_uris()) {
-        if (!valid_hashes.has(hash)) {
-            fastify.log.info(`removing pub key for hash: ${hash}`);
-            await remove_pub_key(hash);
+    for (const uri of await keystore.get_uris()) {
+        if (!valid_hashes.has(uri.split(':')[1])) {
+            fastify.log.info(`removing entry: ${uri}`);
+            await keystore.remove_pub_key(uri);
         }
     }
 
     for (const [id, hash] of valid_hashmap) { // eslint-disable-line require-atomic-updates
         fastify.log.info(`setting up routes for id: ${id}, hash: ${hash}`);
 
-        const empty_user = Object.assign({}, users[id] || default_user, {
-            credentials: []
-        });
-
         fastify.get(`/${id}/`, { schema: schemas.get }, async (request, reply) => {
-            const { user, issuer_id } = await get_pub_key_by_uri(hash);
+            const { obj: user, issuer_id } = await keystore.get_pub_key_by_uri(`id:${hash}`);
             if (user === null) {
                 reply.code(404);
                 const {
@@ -109,7 +51,7 @@ export default async function (fastify, options) {
                 return {
                     options,
                     session_data: await make_secret_session_data(
-                        id, 'registration', sessionData)
+                        sodium, id, 'registration', sessionData, session_data_key)
                 };
             }
             const { options, sessionData } = await webAuthn.beginLogin(user, ...login_options);
@@ -117,51 +59,22 @@ export default async function (fastify, options) {
                 issuer_id,
                 options,
                 session_data: await make_secret_session_data(
-                    id, 'login', sessionData)
+                    sodium, id, 'login', sessionData, session_data_key)
             };
         });
 
-        fastify.put(`/${id}/`, { schema: schemas.put }, async request => {
-            const session_data = await verify_secret_session_data(
-                id, 'registration', request.body.session_data);
-            let credential;
-            try {
-                credential = await webAuthn.finishRegistration(
-                    empty_user, session_data, request.body.ccr);
-            } catch (ex) {
-                ex.statusCode = 400;
-                throw ex;
-            }
-            const user = Object.assign({}, empty_user, {
-                credentials: [credential]
-            });
-            const issuer_id = await add_pub_key(hash, user);
-            await deploy();
-            const { options } = await webAuthn.beginLogin(user, ...login_options);
-            return { issuer_id, options };
+        fastify.put(`/${id}/`, { schema: schemas.put }, async (request, reply) => {
+            const r = await register(
+                keystore, webAuthn, sodium, empty_user, login_options,
+                id, hash, request.body, session_data_key, session_data_timeout);
+            reply.code(201);
+            return r;
         });
 
         fastify.post(`/${id}/`, { schema: schemas.post }, async (request, reply) => {
-            const { user } = await get_pub_key_by_uri(hash);
-            if (user === null) {
-                throw new ErrorWithStatus('no user', 404);
-            }
-            const session_data = await verify_secret_session_data(
-                id, 'login', request.body.session_data);
-            let credential;
-            try {
-                credential = await webAuthn.finishLogin(
-                    user, session_data, request.body.car);
-            } catch (ex) {
-                ex.statusCode = 400;
-                throw ex;
-            }
-            if (credential.Authenticator.CloneWarning) {
-                throw new ErrorWithStatus('credential appears to be cloned', 403);
-            }
-            // Note we don't update SignCout because the credential is expected to be used
-            // to sign assertions which are given out as perks, which (a) may be duplicated
-            // and (b) may be used in any order.
+            await login(
+                keystore, webAuthn, sodium,
+                id, hash, request.body, session_data_key, session_data_timeout);
             reply.code(204);
         });
     }

@@ -5,7 +5,7 @@ const { definitions } = schemas;
 
 const issuer_id = { type: 'string' };
 
-const session_data = {
+const encrypted_data = {
     type: 'object',
     required: [
         'ciphertext',
@@ -13,8 +13,32 @@ const session_data = {
     ],
     additionalProperties: false,
     properties: {
-        ciphertext: { type: 'string' },
-        nonce: { type: 'string' }
+        ciphertext: {
+            type: 'string',
+            contentEncoding: 'base64'
+        },
+        nonce: {
+            type: 'string',
+            contentEncoding: 'base64'
+        }
+    }
+};
+
+const session_data = encrypted_data;
+
+const encrypted_credentials = {
+    type: 'array',
+    items: {
+        type: 'object',
+        required: [
+            'id',
+            'encrypted_credential'
+        ],
+        additionalProperties: false,
+        properties: {
+            id: { type: 'string' },
+            encrypted_credential: encrypted_data
+        }
     }
 };
 
@@ -65,7 +89,7 @@ export const cred = {
             definitions
         },
         response: {
-            200: {
+            201: {
                 type: 'object',
                 required: [
                     'issuer_id',
@@ -96,7 +120,7 @@ export const cred = {
     }
 };
 
-export function perk(response_schema) {
+export function perk(response_schema, access) {
     return {
         get: {
             querystring: {
@@ -109,20 +133,37 @@ export function perk(response_schema) {
                     assertion: { type: 'string' }
                 }
             },
-            response: response_schema
+            response: access ? undefined : response_schema
         },
-
         post: {
             body: {
                 type: 'object',
                 required: [
-                    'issuer_id',
-                    'car'
+                    'assertion',
+                    ...(access ? ['access'] : [])
                 ],
                 additionalProperties: false,
                 properties: {
-                    issuer_id,
-                    car: definitions.CredentialAssertionResponse
+                    assertion: {
+                        type: 'object',
+                        required: [
+                            'issuer_id',
+                            'car'
+                        ],
+                        additionalProperties: false,
+                        properties: {
+                            issuer_id,
+                            car: definitions.CredentialAssertionResponse
+                        }
+                    },
+                    ...(access ? {
+                        access: {
+                            oneOf: [
+                                cred.post.body,
+                                { type: 'string' }
+                            ]
+                        }
+                    } : {})
                 },
                 definitions
             },
@@ -130,3 +171,44 @@ export function perk(response_schema) {
         }
     };
 }
+
+export const access = {
+    get: {
+        response: {
+            200: cred.get.response[404]
+        }
+    },
+    post: {
+        body: {
+            oneOf: [
+                { ...cred.put.body, additionalProperties: true },
+                { ...cred.post.body, additionalProperties: true },
+                { ...perk().post.body, additionalProperties: true }
+            ],
+            definitions
+        },
+        response: {
+            200: encrypted_credentials,
+            201: {
+                ...cred.put.response[201],
+                required: [
+                    ...cred.put.response[201].required,
+                    'encrypted_credentials'
+                ],
+                properties: {
+                    ...cred.put.response[201].properties,
+                    encrypted_credentials
+                }
+            }
+        }
+    },
+    post_payload: {
+        type: 'object',
+        required: [
+            'encrypted_credentials'
+        ],
+        properties: {
+            encrypted_credentials
+        }
+    }
+};

@@ -1,0 +1,8 @@
+textarea {
+    width: 90%;
+    margin-left: 5%;
+    margin-top: 1em;
+    margin-bottom: 1em;
+    padding: .5em;
+    display: block;
+}

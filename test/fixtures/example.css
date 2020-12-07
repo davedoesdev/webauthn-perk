@@ -7,7 +7,7 @@ input[type="button"] {
     margin-bottom: 10px;
 }
 
-label::before {
+label::after {
     content: "\a";
     white-space: pre;
 }
