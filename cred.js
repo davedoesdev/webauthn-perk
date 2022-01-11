@@ -121,7 +121,7 @@ export default async function (fastify, options) {
             };
         });
 
-        fastify.put(`/${id}/`, { schema: schemas.put }, async request => {
+        fastify.put(`/${id}/`, { schema: schemas.put }, async (request, reply) => {
             const session_data = await verify_secret_session_data(
                 id, 'registration', request.body.session_data);
             let credential;
@@ -138,6 +138,7 @@ export default async function (fastify, options) {
             const issuer_id = await add_pub_key(hash, user);
             await deploy();
             const { options } = await webAuthn.beginLogin(user, ...login_options);
+            reply.code(201);
             return { issuer_id, options };
         });
 
@@ -159,7 +160,7 @@ export default async function (fastify, options) {
             if (credential.Authenticator.CloneWarning) {
                 throw new ErrorWithStatus('credential appears to be cloned', 403);
             }
-            // Note we don't update SignCout because the credential is expected to be used
+            // Note we don't update SignCount because the credential is expected to be used
             // to sign assertions which are given out as perks, which (a) may be duplicated
             // and (b) may be used in any order.
             reply.code(204);

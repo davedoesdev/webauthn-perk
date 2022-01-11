@@ -10,7 +10,7 @@ const response_schemas = {
         404: ajv.compile(schemas.get.response[404])
     },
     put: {
-        200: ajv.compile(schemas.put.response[200])
+        201: ajv.compile(schemas.put.response[201])
     }
 };
 
@@ -180,13 +180,18 @@ export class PerkWorkflowBase {
     }
 
     async perk(jwt) {
-        // Make perk URL
-        const perk_url = new URL(location.href);
-        perk_url.pathname = this.options.perk_path;
-        const params = new URLSearchParams();
-        params.set('assertion', JSON.stringify(await this.perk_assertion(jwt)));
-        perk_url.search = params.toString();
-        return perk_url;
+        await this.before_perk();
+        try {
+            // Make perk URL
+            const perk_url = new URL(location.href);
+            perk_url.pathname = this.options.perk_path;
+            const params = new URLSearchParams();
+            params.set('assertion', JSON.stringify(await this.perk_assertion(jwt)));
+            perk_url.search = params.toString();
+            return perk_url;
+        } finally {
+            await this.after_perk();
+        }
     }
 
     async authenticate() {
@@ -194,13 +199,19 @@ export class PerkWorkflowBase {
         if (await this.check_registration()) {
             // Already registered so verify it was us
             await this.before_verify();
-            await this.verify();
-            await this.after_verify();
+            try {
+                await this.verify();
+            } finally {
+                await this.after_verify();
+            }
         } else {
             // Not registered
             await this.before_register();
-            await this.register();
-            await this.after_register();
+            try {
+                await this.register();
+            } finally {
+                await this.after_register();
+            }
         }
         // Now we have the credential options (identifying the private key)
         // and the issuer ID (identifying the public key)
@@ -210,6 +221,8 @@ export class PerkWorkflowBase {
     async after_register() {}
     async before_verify() {}
     async after_verify() {}
+    async before_perk() {}
+    async after_perk() {}
 }
 
 export { Ajv, ajv, validate };

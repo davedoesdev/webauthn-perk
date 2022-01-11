@@ -52,9 +52,9 @@ export default async function (fastify, options) {
     });
 
     const perk_options = Object.assign({
-        prefix: '/perk/',
-        authz
+        prefix: '/perk/'
     }, options.perk_options, {
+        authz,
         valid_ids: cred_options.valid_ids
     });
 

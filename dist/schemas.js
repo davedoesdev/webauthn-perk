@@ -13,8 +13,14 @@ const session_data = {
     ],
     additionalProperties: false,
     properties: {
-        ciphertext: { type: 'string' },
-        nonce: { type: 'string' }
+        ciphertext: {
+            type: 'string',
+            contentEncoding: 'base64'
+        },
+        nonce: {
+            type: 'string',
+            contentEncoding: 'base64'
+        }
     }
 };
 
@@ -65,7 +71,7 @@ export const cred = {
             definitions
         },
         response: {
-            200: {
+            201: {
                 type: 'object',
                 required: [
                     'issuer_id',

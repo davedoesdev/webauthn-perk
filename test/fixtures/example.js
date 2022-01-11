@@ -22,6 +22,18 @@ class ExamplePerkWorkflow extends PerkWorkflow {
     async after_register() {
         document.body.removeChild(this.register_text);
     }
+
+    async before_perk() {
+        // Ask the user to sign
+        this.sign_div = document.createElement('div');
+        const sign_text = document.createTextNode('Please sign using your token');
+        this.sign_div.appendChild(sign_text);
+        document.body.appendChild(this.sign_div);
+    }
+
+    async after_perk() {
+        document.body.removeChild(this.sign_div);
+    }
 }
 
 function show_error(ex) {
@@ -52,12 +64,12 @@ window.addEventListener('load', async function () {
         await workflow.authenticate();
 
         // Generate assertions
-        const generate_text = document.createTextNode('Please enter a message and click Generate');
-        document.body.appendChild(generate_text);
-
         const message_label = document.createElement('label');
         message_label.setAttribute('for', 'message');
         document.body.appendChild(message_label);
+
+        const generate_text = document.createTextNode('Please enter a message and click Generate');
+        document.body.appendChild(generate_text);
 
         const message_input = document.createElement('input');
         message_input.id = 'message';
@@ -83,16 +95,10 @@ window.addEventListener('load', async function () {
                     message: message_input.value
                 });
 
-                // Ask the user to sign
-                const sign_div = document.createElement('div');
-                const sign_text = document.createTextNode('Please sign using your token');
-                sign_div.appendChild(sign_text);
-                document.body.appendChild(sign_div);
-
                 // Sign JWT and get perk URL
                 const perk_url = await workflow.perk(jwt);
-                document.body.removeChild(sign_div);
 
+                // Display the perk URL to the user
                 const perk_div = document.createElement('div');
                 const perk_text = document.createTextNode("Copy the following link's address and open it in a new browser: ");
                 perk_div.appendChild(perk_text);
