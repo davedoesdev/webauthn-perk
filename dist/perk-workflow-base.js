@@ -1,16 +1,14 @@
 /* eslint-env browser */
 
-import Ajv from './ajv.bundle.js';
-import { cred as schemas } from './schemas.js';
+import { get200, get404, put201 } from './cred-response-validators.js';
 
-const ajv = new Ajv();
-const response_schemas = {
+const response_validators = {
     get: {
-        200: ajv.compile(schemas.get.response[200]),
-        404: ajv.compile(schemas.get.response[404])
+        200: get200,
+        404: get404,
     },
     put: {
-        201: ajv.compile(schemas.put.response[201])
+        201: put201
     }
 };
 
@@ -48,7 +46,9 @@ function decodeLoginOptions(options) {
 
 function validate(schema, response) {
     if (!schema(response.data)) {
-        throw new Error(ajv.errorsText(schema.errors));
+        throw new Error(schema.errors
+            .map(e => `data${e.instancePath} ${e.message}`)
+            .reduce((text, msg) => `${text}, ${msg}`));
     }
 }
 
@@ -69,7 +69,7 @@ export class PerkWorkflowBase {
         const get_response = await this.options.axios.get(this.options.cred_path, {
             validateStatus: status => status === 404 || status === 200
         });
-        validate(response_schemas.get[get_response.status], get_response);
+        validate(response_validators.get[get_response.status], get_response);
 
         this.get_result = get_response.data;
 
@@ -109,7 +109,7 @@ export class PerkWorkflowBase {
             },
             session_data
         });
-        validate(response_schemas.put[put_response.status], put_response);
+        validate(response_validators.put[put_response.status], put_response);
 
         ({ options: this.cred_options, issuer_id: this.issuer_id } = put_response.data);
         decodeLoginOptions(this.cred_options);
@@ -224,5 +224,3 @@ export class PerkWorkflowBase {
     async before_perk() {}
     async after_perk() {}
 }
-
-export { Ajv, ajv, validate };

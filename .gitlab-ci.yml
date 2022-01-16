@@ -1,4 +1,4 @@
-image: node:14.9.0-stretch
+image: node:16.13.2-bullseye
 
 variables:
   DEBIAN_FRONTEND: noninteractive

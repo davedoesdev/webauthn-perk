@@ -1,9 +1,9 @@
 /* eslint-env node, mocha, browser */
-/* global browser, PerkWorkflow, jwt_encode */
+/* global browser, PerkWorkflow, jwt_encode, bufferEncode, bufferDecode */
 
 const { promisify } = require('util');
 const path = require('path');
-const { readFile, writeFile } = require('fs').promises;
+const { readFile } = require('fs').promises;
 const { Agent } = require('https');
 const { expect } = require('chai');
 const crypto = require('crypto');
@@ -18,10 +18,11 @@ const audience = 'urn:webauthn-perk:test';
 const valid_ids = [];
 const urls = [];
 
-const webauthn_perk_path = `${process.env.NYC_OUTPUT_DIR ? './instrument' : '..'}/plugin.js`
 let hash_id;
 let keystore;
 let webAuthn;
+
+const webauthn_perk_path = '../plugin.js';
 
 async function make_fastify(port, options) {
     const webauthn_perk = (await import(webauthn_perk_path)).default;
@@ -147,12 +148,6 @@ async function make_fastify(port, options) {
 
     browser.config.after.push(async function () {
         await fastify.close();
-
-        const coverage_dir = process.env.NYC_OUTPUT_DIR;
-        if (coverage_dir) {
-            const json = JSON.stringify(global.__coverage__);
-            await writeFile(path.join(coverage_dir, 'coverage.json'), json);
-        }
     });
 
     return fastify;
@@ -210,7 +205,7 @@ async function executeAsync(f, ...args) {
 
 async function auth(url, options) {
     options = Object.assign({
-        valid_status: 200
+        valid_status: 201
     }, options);
 
     return await executeAsync(async (url, options) => {
@@ -269,7 +264,7 @@ async function verify(url, options) {
     }, options);
 
     await executeAsync(async (url, options) => {
-        let { options: cred_options, issuer_id, session_data} = (await axios(url)).data;
+        let { options: cred_options, session_data} = (await axios(url)).data;
 
         if (options.cred_url) {
             ({ options: cred_options } = (await axios(options.cred_url)).data);
@@ -460,7 +455,7 @@ describe('credentials', function () {
     it('should return challenge and add public key', async function () {
         let status;
         [ccr, key_info, status, session_data] = await auth(urls[0]);
-        expect(status).to.equal(200);
+        expect(status).to.equal(201);
     });
 
     it('should return key info', async function () {
@@ -495,7 +490,7 @@ describe('credentials', function () {
             valid_status: 400
         });
         expect(status).to.equal(400);
-        expect(data.message).to.equal('data.foo should be integer');
+        expect(data.message).to.equal('data/foo must be integer');
     });
 
     it('should verify assertion so client knows it successfully registered', async function () {

@@ -1,62 +1,30 @@
 /*eslint-env node */
-
+"use strict";
 const path = require('path');
-const load_grunt_tasks = require('load-grunt-tasks');
 
-const mod_path = path.join('.', 'node_modules');
-const bin_path = path.join(mod_path, '.bin');
-const babel_path = path.join(bin_path, 'babel');
-const nyc_path = path.join(bin_path, 'nyc');
-const wdio_path = path.join(bin_path, 'wdio');
-const grunt_path = path.join(bin_path, 'grunt');
-
-const coverage_path = path.join(__dirname, '.nyc_output');
-const instrument_path = 'test/instrument';
+const c8 = "npx c8 -x Gruntfile.cjs -x 'test/**' -x wdio.conf.cjs";
 
 module.exports = function (grunt) {
     grunt.initConfig({
         eslint: {
             target: [
                 '*.js',
+                '*.cjs',
                 'test/**/*.js',
-                '!test/instrument/**/*.js',
+                'test/**/*.cjs',
                 'dist/**/*.js',
                 '!dist/axios.js',
-                '!dist/ajv.bundle.js'
+                '!dist/cred-response-validators.js'
             ]
         },
 
-        exec: {
-            test: `${wdio_path} run wdio.conf.cjs`,
-            wdio_cleanup: './test/wdio_cleanup.sh',
-
-            instrument: {
-                cmd: [
-                    `${babel_path} common.js cred.js perk.js plugin.js --out-dir ${instrument_path}`,
-                    `mkdir -p ${instrument_path}/dist`,
-                    `cp dist/schemas.js dist/schemas.webauthn4js.js ${instrument_path}/dist`,
-                ].join('&&'),
-                options: {
-                    env: Object.assign({}, process.env, {
-                        NODE_ENV: 'test'
-                    })
-                }
-            },
-
-            cover: {
-                cmd: [
-                    `mkdir -p '${coverage_path}'`,
-                    `${grunt_path} --gruntfile Gruntfile.cjs test`
-                ].join('&&'),
-                options: {
-                    env: Object.assign({}, process.env, {
-                        NYC_OUTPUT_DIR: coverage_path
-                    })
-                }
-            },
-            cover_report: `${nyc_path} report -r lcov -r text`,
-            cover_check: `${nyc_path} check-coverage --statements 100 --branches 100 --functions 100 --lines 100`
-        },
+        exec: Object.fromEntries(Object.entries({ 
+            test: `npx wdio run wdio.conf.cjs`,
+            cover: `${c8} grunt --gruntfile Gruntfile.cjs test`,
+            cover_report: `${c8} report -r lcov`,
+            cover_check: `${c8} check-coverage --statements 100 --branches 100 --functions 100 --lines 100`,
+            docs: 'asciidoc -b docbook -o - README.adoc | pandoc -f docbook -t gfm -o README.md'
+        }).map(([k, cmd]) => [k, { cmd, stdio: 'inherit' }])),
 
         fileWrap: {
             axios: {
@@ -64,17 +32,6 @@ module.exports = function (grunt) {
                 footer: '\nreturn this.axios; }).call({});',
                 files: {
                     './dist/axios.js': path.join(path.dirname(require.resolve('axios')), 'dist', 'axios.js')
-                },
-                options: {
-                    skipCheck: true
-                }
-            },
-
-            ajv: {
-                header: 'export default (function () {',
-                footer: '\nreturn Ajv; }).call({});',
-                files: {
-                    './dist/ajv.bundle.js': path.join(path.dirname(require.resolve('ajv')), '..', 'dist', 'ajv.bundle.js')
                 },
                 options: {
                     skipCheck: true
@@ -94,43 +51,52 @@ module.exports = function (grunt) {
         }
     });
 
-    load_grunt_tasks(grunt, {
-        pattern: 'grunt-file-wrap',
-        requireResolution: true
-    });
+    grunt.loadNpmTasks('grunt-file-wrap');
 
-    if ((grunt.cli.tasks.length !== 1) || (grunt.cli.tasks[0] !== 'fileWrap')) {
+    if (!process.env.npm_package_postinstall) {
         grunt.loadNpmTasks('grunt-eslint');
         grunt.loadNpmTasks('grunt-exec');
-        grunt.loadNpmTasks('grunt-force-task');
     }
 
     grunt.registerTask('lint', 'eslint');
 
-    grunt.registerTask('test', [
-        'force:exec:test',
-        // work around https://github.com/webdriverio/wdio-selenium-standalone-service/issues/28
-        // (https://github.com/vvo/selenium-standalone/issues/351)
-        'exec:wdio_cleanup',
-        'exit_with_test_status'
-    ]);
+    grunt.registerTask('docs', 'exec:docs');
+
+    grunt.registerTask('test', 'exec:test');
 
     grunt.registerTask('coverage', [
-        'exec:instrument',
         'exec:cover',
         'exec:cover_report',
-        'force:exec:cover_check',
-        'exec:wdio_cleanup',
-        'exit_with_coverage_status'
+        'exec:cover_check'
     ]);
 
-    grunt.registerTask('exit_with_test_status', function () {
-        this.requires(['exec:test']);
-        return true;
-    });
+    grunt.registerTask('compile-schemas', async function () {
+        const cb = this.async();
 
-    grunt.registerTask('exit_with_coverage_status', function () {
-        this.requires(['exec:cover_check']);
-        return true;
+        const { writeFile } = require('fs/promises');
+        const Ajv = require('ajv');
+        const standaloneCode = require('ajv/dist/standalone/index.js');
+        const { cred } = await import('./dist/schemas.js');
+
+        const ajv = new Ajv({
+            code: {
+                source: true, // this option is required to generate standalone code
+                esm: true
+            }
+        });
+
+        function add_schema(method, status) {
+            ajv.addSchema(cred[method].response[status], `${method}${status}`);
+        }
+
+        add_schema('get', 200);
+        add_schema('get', 404);
+        add_schema('put', 201);
+
+        await writeFile(
+            path.join(__dirname, 'dist', 'cred-response-validators.js'),
+            standaloneCode(ajv));
+
+        cb();
     });
 };

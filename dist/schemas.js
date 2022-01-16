@@ -1,7 +1,37 @@
-/*eslint-env shared-node-browser */
-
+import schema_migrate from 'json-schema-migrate';
 import schemas from './schemas.webauthn4js.js';
-const { definitions } = schemas;
+
+const { definitions, $schema } = schemas;
+
+function fixup(schema) {
+    const to_delete = [];
+    const to_add = {};
+    for (const key in schema) {
+        const val = schema[key];
+        if (key === 'additionalProperties') {
+            to_add.type = 'object';
+            continue;
+        }
+        if ((key === 'media') && val.binaryEncoding) {
+            to_add.contentEncoding = val.binaryEncoding;
+            to_delete.push(key);
+            continue;
+        }
+        if (typeof(val) === 'object') {
+            fixup(val);
+        }
+    }
+    for (const key of to_delete) {
+        delete schema[key];
+    }
+    Object.assign(schema, to_add);
+}
+
+function migrate(schema) {
+    schema_migrate.draft7(schema);
+    fixup(schema);
+    return schema;
+}
 
 const issuer_id = { type: 'string' };
 
@@ -27,7 +57,7 @@ const session_data = {
 export const cred = {
     get: {
         response: {
-            200: {
+            200: migrate({
                 type: 'object',
                 required: [
                     'issuer_id',
@@ -40,9 +70,10 @@ export const cred = {
                     options: definitions.CredentialAssertion,
                     session_data
                 },
-                definitions
-            },
-            404: {
+                definitions,
+                $schema
+            }),
+            404: migrate({
                 type: 'object',
                 required: [
                     'options',
@@ -53,12 +84,13 @@ export const cred = {
                     options: definitions.CredentialCreation,
                     session_data
                 },
-                definitions
-            }
+                definitions,
+                $schema
+            })
         }
     },
     put: {
-        body: {
+        body: migrate({
             type: 'object',
             required: [
                 'ccr',
@@ -68,10 +100,11 @@ export const cred = {
                 ccr: definitions.CredentialCreationResponse,
                 session_data
             },
-            definitions
-        },
+            definitions,
+            $schema
+        }),
         response: {
-            201: {
+            201: migrate({
                 type: 'object',
                 required: [
                     'issuer_id',
@@ -82,12 +115,13 @@ export const cred = {
                     issuer_id,
                     options: definitions.CredentialAssertion
                 },
-                definitions
-            }
+                definitions,
+                $schema
+            })
         }
     },
     post: {
-        body: {
+        body: migrate({
             type: 'object',
             required: [
                 'car',
@@ -97,8 +131,9 @@ export const cred = {
                 car: definitions.CredentialAssertionResponse,
                 session_data
             },
-            definitions
-        }
+            definitions,
+            $schema
+        })
     }
 };
 
@@ -119,7 +154,7 @@ export function perk(response_schema) {
         },
 
         post: {
-            body: {
+            body: migrate({
                 type: 'object',
                 required: [
                     'issuer_id',
@@ -130,8 +165,9 @@ export function perk(response_schema) {
                     issuer_id,
                     car: definitions.CredentialAssertionResponse
                 },
-                definitions
-            },
+                definitions,
+                $schema
+            }),
             response: response_schema
         }
     };

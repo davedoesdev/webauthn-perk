@@ -1,8 +1,7 @@
 node_modules
 /errorShots
 /test/store
-/test/instrument
-/.nyc_output
 /dist/axios.js
-/dist/ajv.bundle.js
 /dist/schemas.webauthn4js.js
+/dist/cred-response-validators.js
+/coverage/tmp
