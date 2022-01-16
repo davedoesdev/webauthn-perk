@@ -13,7 +13,8 @@ before_script:
 ci:
   script:
     # gitlab images run as root in container
-    - npm install --unsafe-perm
+    - whoami
+    - npm install --python=python3 --unsafe-perm
     - xvfb-run bash -c 'fvwm& DEBUG=selenium-standalone:* npm run ci'
   coverage: '/^All files[^\d]*(\d+[.\d]*)/'
   artifacts:
