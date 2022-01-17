@@ -69,7 +69,7 @@ window.addEventListener('load', async function () {
         document.body.appendChild(message_label);
 
         const generate_text = document.createTextNode('Please enter a message and click Generate');
-        document.body.appendChild(generate_text);
+        message_label.appendChild(generate_text);
 
         const message_input = document.createElement('input');
         message_input.id = 'message';

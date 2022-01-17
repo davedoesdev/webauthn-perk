@@ -99,7 +99,7 @@ fastify.register(webauthn_perk, {
             },
 
             // The following are required by WebAuthn4JS. They have no default and you must supply them.
-            // See https://rawgit-now.davedoesdev.now.sh/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.config.html
+            // See https://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.config.html
             RPDisplayName: undefined,
             RPID: undefined,
             RPOrigin: undefined
@@ -111,17 +111,17 @@ fastify.register(webauthn_perk, {
             store_prefix: false, // Whether to store complete path from root when associating unguessable IDs with public keys
             default_user: {
                 // You can override these but they'll only be used if your authenticator supports storing user handles.
-                // See https://rawgit-now.davedoesdev.now.sh/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.user.html
+                // See https://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.user.html
                 id: 'anonymous',
                 name: 'Anonymous',
                 displayName: 'Anonymous'
             },
             users: {}, // If you want to customise user details per unguessable ID
             registration_options: [
-                // See https://rawgit-now.davedoesdev.now.sh/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.webauthn4js-1.html#beginregistration
+                // See https://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.webauthn4js-1.html#beginregistration
             ],
             login_options: [
-                // See https://rawgit-now.davedoesdev.now.sh/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.webauthn4js-1.html#beginlogin
+                // See https://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.webauthn4js-1.html#beginlogin
             ]
         },
         perk_options: {
@@ -157,11 +157,11 @@ response bodies should be JSON-encoded.
         
           - If no public key is associated with `*id*` then the response
             status is 404 and the body will contain a
-            [`CredentialCreation`](https://rawgit-now.davedoesdev.now.sh/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialcreation.html)
+            [`CredentialCreation`](https://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialcreation.html)
             and an encrypted
-            [`SessionData`](https://rawgit-now.davedoesdev.now.sh/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.sessiondata.html)
+            [`SessionData`](https://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.sessiondata.html)
             returned by
-            [`beginRegistration`](https://rawgit-now.davedoesdev.now.sh/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.webauthn4js-1.html#beginregistration).
+            [`beginRegistration`](https://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.webauthn4js-1.html#beginregistration).
             The `CredentialCreation` can be used when calling
             `navigator.credentials.create` in a browser. The
             `SessionData` must be used in a subsequent PUT request (see
@@ -170,11 +170,11 @@ response bodies should be JSON-encoded.
           - If a public key has been associated with `*id*` then the
             response status is 200 and the body will contain an issuer
             ID (identifes the public key to the server), a
-            [`CredentialAssertion`](https://rawgit-now.davedoesdev.now.sh/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialassertion.html)
+            [`CredentialAssertion`](https://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialassertion.html)
             and an encrypted
-            [`SessionData`](https://rawgit-now.davedoesdev.now.sh/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.sessiondata.html)
+            [`SessionData`](https://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.sessiondata.html)
             returned by
-            [`beginLogin`](https://rawgit-now.davedoesdev.now.sh/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.webauthn4js-1.html#beginlogin).
+            [`beginLogin`](https://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.webauthn4js-1.html#beginlogin).
             The `CredentialAssertion` can be used when calling
             `navigator.credentials.get` in a browser. The `SessionData`
             must be used in a subsequent POST request (see below).
@@ -182,7 +182,7 @@ response bodies should be JSON-encoded.
       - PUT requests:
         
           - The request body should contain a
-            [`CredentialCreationResponse`](https://rawgit-now.davedoesdev.now.sh/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialcreationresponse.html)
+            [`CredentialCreationResponse`](https://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialcreationresponse.html)
             generated by `navigator.credentials.create` in a browser.
             You should have made a GET request previously to obtain the
             options required by `navigator.credentials.create`.
@@ -197,13 +197,13 @@ response bodies should be JSON-encoded.
             is associated with `*id*` and the response status is 200.
             The response body will contain the issuer ID (identifies the
             public key to the server) and a
-            [`CredentialAssertion`](https://rawgit-now.davedoesdev.now.sh/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialassertion.html)
+            [`CredentialAssertion`](https://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialassertion.html)
             (identifies the public key to the browser).
     
       - POST requests:
         
           - The request body should contain a
-            [`CredentialAssertionResponse`](https://rawgit-now.davedoesdev.now.sh/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialassertionresponse.html)
+            [`CredentialAssertionResponse`](https://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialassertionresponse.html)
             generated by `navigator.credentials.get` in a browser. You
             should have made a GET request previously to obtain the
             options required by `navigator.credentials.get`.
@@ -227,7 +227,7 @@ response bodies should be JSON-encoded.
         
           - The request body should contain an issuer ID (obtained from
             a previous GET or PUT request to `/cred/*id*/`) and a
-            [`CredentialAssertionResponse`](https://rawgit-now.davedoesdev.now.sh/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialassertionresponse.html)
+            [`CredentialAssertionResponse`](https://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialassertionresponse.html)
             generated by `navigator.credentials.get` in a browser.
         
           - The challenge used to generate the assertion response should
@@ -410,6 +410,16 @@ the methods.
         your server will not successfully verify URLs returned by
         [perk(jwt)](#perk).
 
+  - async before\_perk()
+    
+      - Called by [perk(jwt)](#perk) before it generates a perk URL
+        containing a signed assertion.
+
+  - async after\_perk()
+    
+      - Called by [perk(jwt)](#perk) after it generates a perk URL
+        containing a signed assertion.
+
 # Installation
 
 ``` bash
@@ -438,5 +448,5 @@ grunt --gruntfile Gruntfile.cjs lint
 grunt --gruntfile Gruntfile.cjs coverage
 ```
 
-[Istanbul](https://istanbul.js.org/) results are available
+[c8](https://github.com/bcoe/c8) results are available
 [here](https://gitlab.com/davedoesdev/webauthn-perk/builds/artifacts/master/download?job=ci).
