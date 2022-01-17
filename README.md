@@ -99,7 +99,7 @@ fastify.register(webauthn_perk, {
             },
 
             // The following are required by WebAuthn4JS. They have no default and you must supply them.
-            // See http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.config.html
+            // See http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/Config.html
             RPDisplayName: undefined,
             RPID: undefined,
             RPOrigin: undefined
@@ -111,17 +111,17 @@ fastify.register(webauthn_perk, {
             store_prefix: false, // Whether to store complete path from root when associating unguessable IDs with public keys
             default_user: {
                 // You can override these but they'll only be used if your authenticator supports storing user handles.
-                // See http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.user.html
+                // See http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/User.html
                 id: 'anonymous',
                 name: 'Anonymous',
                 displayName: 'Anonymous'
             },
             users: {}, // If you want to customise user details per unguessable ID
             registration_options: [
-                // See http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.webauthn4js-1.html#beginregistration
+                // See http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/WebAuthn4JS.html#beginRegistration
             ],
             login_options: [
-                // See http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.webauthn4js-1.html#beginlogin
+                // See http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/WebAuthn4JS.html#beginLogin
             ]
         },
         perk_options: {
@@ -157,11 +157,11 @@ response bodies should be JSON-encoded.
         
           - If no public key is associated with `*id*` then the response
             status is 404 and the body will contain a
-            [`CredentialCreation`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialcreation.html)
+            [`CredentialCreation`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/CredentialCreation.html)
             and an encrypted
-            [`SessionData`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.sessiondata.html)
+            [`SessionData`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/SessionData.html)
             returned by
-            [`beginRegistration`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.webauthn4js-1.html#beginregistration).
+            [`beginRegistration`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/WebAuthn4JS.html#beginRegistration).
             The `CredentialCreation` can be used when calling
             `navigator.credentials.create` in a browser. The
             `SessionData` must be used in a subsequent PUT request (see
@@ -170,11 +170,11 @@ response bodies should be JSON-encoded.
           - If a public key has been associated with `*id*` then the
             response status is 200 and the body will contain an issuer
             ID (identifes the public key to the server), a
-            [`CredentialAssertion`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialassertion.html)
+            [`CredentialAssertion`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/CredentialAssertion.html)
             and an encrypted
-            [`SessionData`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.sessiondata.html)
+            [`SessionData`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/SessionData.html)
             returned by
-            [`beginLogin`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.webauthn4js-1.html#beginlogin).
+            [`beginLogin`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/WebAuthn4JS.html#beginLogin).
             The `CredentialAssertion` can be used when calling
             `navigator.credentials.get` in a browser. The `SessionData`
             must be used in a subsequent POST request (see below).
@@ -182,7 +182,7 @@ response bodies should be JSON-encoded.
       - PUT requests:
         
           - The request body should contain a
-            [`CredentialCreationResponse`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialcreationresponse.html)
+            [`CredentialCreationResponse`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/CredentialCreationResponse.html)
             generated by `navigator.credentials.create` in a browser.
             You should have made a GET request previously to obtain the
             options required by `navigator.credentials.create`.
@@ -197,13 +197,13 @@ response bodies should be JSON-encoded.
             is associated with `*id*` and the response status is 200.
             The response body will contain the issuer ID (identifies the
             public key to the server) and a
-            [`CredentialAssertion`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialassertion.html)
+            [`CredentialAssertion`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/CredentialAssertion.html)
             (identifies the public key to the browser).
     
       - POST requests:
         
           - The request body should contain a
-            [`CredentialAssertionResponse`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialassertionresponse.html)
+            [`CredentialAssertionResponse`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/CredentialAssertionResponse.html)
             generated by `navigator.credentials.get` in a browser. You
             should have made a GET request previously to obtain the
             options required by `navigator.credentials.get`.
@@ -227,7 +227,7 @@ response bodies should be JSON-encoded.
         
           - The request body should contain an issuer ID (obtained from
             a previous GET or PUT request to `/cred/*id*/`) and a
-            [`CredentialAssertionResponse`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/webauthn4js.credentialassertionresponse.html)
+            [`CredentialAssertionResponse`](http://rawgit.davedoesdev.com/davedoesdev/webauthn4js/master/docs/interfaces/CredentialAssertionResponse.html)
             generated by `navigator.credentials.get` in a browser.
         
           - The challenge used to generate the assertion response should
