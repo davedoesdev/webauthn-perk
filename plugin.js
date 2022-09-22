@@ -8,9 +8,9 @@ const authorize_jwt = promisify(mod_authorize_jwt);
 
 export default async function (fastify, options) {
     const ajv = new Ajv({
-      removeAdditional: 'all',
-      useDefaults: true,
-      coerceTypes: 'array'
+        removeAdditional: 'all',
+        useDefaults: true,
+        coerceTypes: 'array'
     });
 
     fastify.setValidatorCompiler(({ schema }) => {
