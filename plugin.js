@@ -1,11 +1,22 @@
 /*eslint-env node */
 import { promisify } from 'util';
 import mod_authorize_jwt from 'authorize-jwt';
+import Ajv from 'ajv/dist/2020.js';
 import perk from './perk.js';
 import cred from './cred.js';
 const authorize_jwt = promisify(mod_authorize_jwt);
 
 export default async function (fastify, options) {
+    const ajv = new Ajv({
+      removeAdditional: 'all',
+      useDefaults: true,
+      coerceTypes: 'array'
+    });
+
+    fastify.setValidatorCompiler(({ schema }) => {
+        return ajv.compile(schema);
+    });
+
     options = options.webauthn_perk_options || options;
 
     const cred_options = Object.assign({

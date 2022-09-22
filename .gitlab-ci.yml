@@ -1,4 +1,4 @@
-image: node:16.13.2-bullseye
+image: node:18-bullseye
 
 variables:
   DEBIAN_FRONTEND: noninteractive

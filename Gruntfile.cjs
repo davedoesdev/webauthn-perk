@@ -1,11 +1,18 @@
 /*eslint-env node */
 "use strict";
-const path = require('path');
+const { join, dirname } = require('path');
+const { homedir } = require('os');
 
 const c8 = "npx c8 -x Gruntfile.cjs -x 'test/**' -x wdio.conf.cjs";
 
 module.exports = function (grunt) {
     grunt.initConfig({
+        env: {
+            test: {
+                TMPDIR: join(homedir(), 'tmp')
+            }
+        },
+
         eslint: {
             target: [
                 '*.js',
@@ -31,7 +38,7 @@ module.exports = function (grunt) {
                 header: 'export default (function () {',
                 footer: '\nreturn this.axios; }).call({});',
                 files: {
-                    './dist/axios.js': path.join(path.dirname(require.resolve('axios')), 'dist', 'axios.js')
+                    './dist/axios.js': join(dirname(require.resolve('axios')), 'dist', 'axios.js')
                 },
                 options: {
                     skipCheck: true
@@ -42,7 +49,7 @@ module.exports = function (grunt) {
                 header: '/* eslint indent: [ error, 2 ] */ export default ',
                 footer: ';',
                 files: {
-                    './dist/schemas.webauthn4js.js': path.join(path.dirname(require.resolve('webauthn4js')), 'schemas', 'schemas.json')
+                    './dist/schemas.webauthn4js.js': join(dirname(require.resolve('webauthn4js')), 'schemas', 'schemas.json')
                 },
                 options: {
                     skipCheck: true
@@ -56,13 +63,14 @@ module.exports = function (grunt) {
     if (!process.env.npm_package_postinstall) {
         grunt.loadNpmTasks('grunt-eslint');
         grunt.loadNpmTasks('grunt-exec');
+        grunt.loadNpmTasks('grunt-env');
     }
 
     grunt.registerTask('lint', 'eslint');
 
     grunt.registerTask('docs', 'exec:docs');
 
-    grunt.registerTask('test', 'exec:test');
+    grunt.registerTask('test', ['env:test', 'exec:test']);
 
     grunt.registerTask('coverage', [
         'exec:cover',
@@ -74,7 +82,7 @@ module.exports = function (grunt) {
         const cb = this.async();
 
         const { writeFile } = require('fs/promises');
-        const Ajv = require('ajv');
+        const Ajv = require('ajv/dist/2020');
         const standaloneCode = require('ajv/dist/standalone/index.js');
         const { cred } = await import('./dist/schemas.js');
 
@@ -94,7 +102,7 @@ module.exports = function (grunt) {
         add_schema('put', 201);
 
         await writeFile(
-            path.join(__dirname, 'dist', 'cred-response-validators.js'),
+            join(__dirname, 'dist', 'cred-response-validators.js'),
             standaloneCode(ajv));
 
         cb();

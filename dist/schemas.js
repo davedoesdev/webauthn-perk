@@ -1,37 +1,6 @@
-import schema_migrate from 'json-schema-migrate';
 import schemas from './schemas.webauthn4js.js';
 
-const { definitions, $schema } = schemas;
-
-function fixup(schema) {
-    const to_delete = [];
-    const to_add = {};
-    for (const key in schema) {
-        const val = schema[key];
-        if (key === 'additionalProperties') {
-            to_add.type = 'object';
-            continue;
-        }
-        if ((key === 'media') && val.binaryEncoding) {
-            to_add.contentEncoding = val.binaryEncoding;
-            to_delete.push(key);
-            continue;
-        }
-        if (typeof(val) === 'object') {
-            fixup(val);
-        }
-    }
-    for (const key of to_delete) {
-        delete schema[key];
-    }
-    Object.assign(schema, to_add);
-}
-
-function migrate(schema) {
-    schema_migrate.draft7(schema);
-    fixup(schema);
-    return schema;
-}
+const { $defs, $schema } = schemas;
 
 const issuer_id = { type: 'string' };
 
@@ -57,7 +26,7 @@ const session_data = {
 export const cred = {
     get: {
         response: {
-            200: migrate({
+            200: {
                 type: 'object',
                 required: [
                     'issuer_id',
@@ -67,13 +36,13 @@ export const cred = {
                 additionalProperties: false,
                 properties: {
                     issuer_id,
-                    options: definitions.CredentialAssertion,
+                    options: $defs.CredentialAssertion,
                     session_data
                 },
-                definitions,
+                $defs,
                 $schema
-            }),
-            404: migrate({
+            },
+            404: {
                 type: 'object',
                 required: [
                     'options',
@@ -81,30 +50,30 @@ export const cred = {
                 ],
                 additionalProperties: false,
                 properties: {
-                    options: definitions.CredentialCreation,
+                    options: $defs.CredentialCreation,
                     session_data
                 },
-                definitions,
+                $defs,
                 $schema
-            })
+            }
         }
     },
     put: {
-        body: migrate({
+        body: {
             type: 'object',
             required: [
                 'ccr',
                 'session_data'
             ],
             properties: {
-                ccr: definitions.CredentialCreationResponse,
+                ccr: $defs.CredentialCreationResponse,
                 session_data
             },
-            definitions,
+            $defs,
             $schema
-        }),
+        },
         response: {
-            201: migrate({
+            201: {
                 type: 'object',
                 required: [
                     'issuer_id',
@@ -113,27 +82,27 @@ export const cred = {
                 additionalProperties: false,
                 properties: {
                     issuer_id,
-                    options: definitions.CredentialAssertion
+                    options: $defs.CredentialAssertion
                 },
-                definitions,
+                $defs,
                 $schema
-            })
+            }
         }
     },
     post: {
-        body: migrate({
+        body: {
             type: 'object',
             required: [
                 'car',
                 'session_data'
             ],
             properties: {
-                car: definitions.CredentialAssertionResponse,
+                car: $defs.CredentialAssertionResponse,
                 session_data
             },
-            definitions,
+            $defs,
             $schema
-        })
+        }
     }
 };
 
@@ -154,7 +123,7 @@ export function perk(response_schema) {
         },
 
         post: {
-            body: migrate({
+            body: {
                 type: 'object',
                 required: [
                     'issuer_id',
@@ -163,11 +132,11 @@ export function perk(response_schema) {
                 additionalProperties: false,
                 properties: {
                     issuer_id,
-                    car: definitions.CredentialAssertionResponse
+                    car: $defs.CredentialAssertionResponse
                 },
-                definitions,
+                $defs,
                 $schema
-            }),
+            },
             response: response_schema
         }
     };

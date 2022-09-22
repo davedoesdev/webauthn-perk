@@ -7,7 +7,7 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { promisify } from 'util';
 import mod_fastify from 'fastify';
-import fastify_static from 'fastify-static';
+import fastify_static from '@fastify/static';
 import webauthn_perk from '../plugin.js';
 const readFile = fs.promises.readFile;
 const randomBytes = promisify(crypto.randomBytes);
@@ -61,7 +61,7 @@ const origin = `https://localhost:${port}`;
         decorateReply: false
     });
 
-    await fastify.listen(3000);
+    await fastify.listen({ port: 3000 });
 
     console.log(`Please visit ${origin}/${id}/`);
 })();

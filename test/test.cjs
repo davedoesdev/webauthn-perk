@@ -8,7 +8,7 @@ const { Agent } = require('https');
 const { expect } = require('chai');
 const crypto = require('crypto');
 const mod_fastify = require('fastify');
-const fastify_static = require('fastify-static');
+const fastify_static = require('@fastify/static');
 const axios = require('axios');
 const { SodiumPlus } = require('sodium-plus');
 const randomBytes = promisify(crypto.randomBytes);
@@ -144,7 +144,7 @@ async function make_fastify(port, options) {
         decorateReply: false
     });
 
-    await fastify.listen(port);
+    await fastify.listen({ port });
 
     browser.config.after.push(async function () {
         await fastify.close();
@@ -447,7 +447,7 @@ describe('credentials', function () {
             valid_status: 400
         });
         expect(status).to.equal(400);
-        expect(error.message).to.equal("body.ccr should have required property 'id'");
+        expect(error.message).to.equal("body/ccr must have required property 'id'");
     });
 
     let ccr, key_info, session_data;
@@ -552,7 +552,8 @@ describe('credentials', function () {
             log: fastify.log,
             get() {},
             put() {},
-            post() {}
+            post() {},
+            setValidatorCompiler() {}
         };
 
         // first check we don't delete valid ID
@@ -693,7 +694,8 @@ describe('credentials', function () {
             after_verify_called,
             before_register_called,
             after_register_called,
-            issuer_id
+            issuer_id,
+            jti
         ] = await executeAsync(async (cred_path, perk_path, audience) => {
             // Start the workflow
             const workflow = new (class extends PerkWorkflow {
@@ -717,14 +719,15 @@ describe('credentials', function () {
 
             // Generate JWT containing message as a claim
             const now = Math.floor(Date.now() / 1000);
-            const jti = new Uint8Array(64);
+            let jti = new Uint8Array(64);
             window.crypto.getRandomValues(jti);
+            jti = btoa(Array.from(jti).map(x => String.fromCharCode(x)).join(''));
             const jwt = jwt_encode({
                 alg: 'none',
                 typ: 'JWT'
             }, {
                 aud: audience,
-                jti: Array.from(jti).map(x => String.fromCharCode(x)).join(''),
+                jti,
                 iat: now,
                 nbf: now,
                 exp: now + 10 * 60, // 10 minutes
@@ -738,7 +741,8 @@ describe('credentials', function () {
                 workflow.after_verify_called,
                 workflow.before_register_called,
                 workflow.after_register_called,
-                workflow.issuer_id
+                workflow.issuer_id,
+                jti
             ];
         }, `/cred/${valid_ids[2]}/`, '/perk/', audience);
 
@@ -758,7 +762,8 @@ describe('credentials', function () {
         expect(perk_response.data.uri).to.equal(valid_ids[2]);
         expect(perk_response.data.issuer_id).to.equal(issuer_id);
         expect(perk_response.data.payload.aud).to.equal(audience);
-        expect(perk_response.data.payload.foo).to.equal(123456);
+        expect(perk_response.data.payload.jti).to.equal(jti);
+        expect(perk_response.data.payload.foo).to.equal(90);
     });
 
     it('should provide workflow object (verify)', async function () {
@@ -768,7 +773,8 @@ describe('credentials', function () {
             after_verify_called,
             before_register_called,
             after_register_called,
-            issuer_id
+            issuer_id,
+            jti
         ] = await executeAsync(async (cred_path, perk_path, audience) => {
             // Start the workflow
             const workflow = new (class extends PerkWorkflow {
@@ -792,14 +798,15 @@ describe('credentials', function () {
 
             // Generate JWT containing message as a claim
             const now = Math.floor(Date.now() / 1000);
-            const jti = new Uint8Array(64);
+            let jti = new Uint8Array(64);
             window.crypto.getRandomValues(jti);
+            jti = btoa(Array.from(jti).map(x => String.fromCharCode(x)).join(''));
             const jwt = jwt_encode({
                 alg: 'none',
                 typ: 'JWT'
             }, {
                 aud: audience,
-                jti: Array.from(jti).map(x => String.fromCharCode(x)).join(''),
+                jti,
                 iat: now,
                 nbf: now,
                 exp: now + 10 * 60, // 10 minutes
@@ -813,7 +820,8 @@ describe('credentials', function () {
                 workflow.after_verify_called,
                 workflow.before_register_called,
                 workflow.after_register_called,
-                workflow.issuer_id
+                workflow.issuer_id,
+                jti
             ];
         }, `/cred/${valid_ids[2]}/`, '/perk/', audience);
 
@@ -833,7 +841,8 @@ describe('credentials', function () {
         expect(perk_response.data.uri).to.equal(valid_ids[2]);
         expect(perk_response.data.issuer_id).to.equal(issuer_id);
         expect(perk_response.data.payload.aud).to.equal(audience);
-        expect(perk_response.data.payload.foo).to.equal(4574321);
+        expect(perk_response.data.payload.jti).to.equal(jti);
+        expect(perk_response.data.payload.foo).to.equal(90);
     });
 
     it('should throw missing handler error', async function () {
