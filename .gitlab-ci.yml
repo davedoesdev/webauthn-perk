@@ -9,6 +9,7 @@ before_script:
   - wget -O - 'https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-GB' | tar -xjC /opt
   - ln -s /opt/firefox/firefox /usr/local/bin
   - firefox --version
+  - mkdir -p ~/tmp
 
 ci:
   script:
