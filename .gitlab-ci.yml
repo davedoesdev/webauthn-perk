@@ -18,10 +18,10 @@ ci:
   variables:
     DEBIAN_FRONTEND: noninteractive
   before_script:
+    - whoami
     - mkdir -p ~/tmp
   script:
-    - whoami
-    - npm install --python=python3 --unsafe-perm
+    - npm install
     - xvfb-run bash -c 'fvwm& npm run ci'
   coverage: '/^All files[^\d]*(\d+[.\d]*)/'
   artifacts:
