@@ -1,18 +1,28 @@
-image: node:20-bookworm
-
-variables:
-  DEBIAN_FRONTEND: noninteractive
-
-before_script:
-  - apt-get update -qq && apt-get install -y -qq xvfb fvwm libnss3 
-  - su -c 'mkdir -p ~/tmp' node
+build:
+  services:
+    - docker.dind
+  image: docker
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
+    - >
+      docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA - <<EOT
+        FROM node:20-bookworm
+        RUN apt update -qq && apt install -y -qq xvfb fvwm libnss3
+        USER node
+      EOT
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
 
 ci:
+  needs: [build]
+  image: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  variables:
+    DEBIAN_FRONTEND: noninteractive
+  before_script:
+    - mkdir -p ~/tmp
   script:
-    # gitlab images run as root in container
-    - su -c whoami node
-    - su -c 'npm install --python=python3 --unsafe-perm' node
-    - su -c 'xvfb-run bash -c "fvwm& npm run ci"' node
+    - whoami
+    - npm install --python=python3 --unsafe-perm
+    - xvfb-run bash -c 'fvwm& npm run ci'
   coverage: '/^All files[^\d]*(\d+[.\d]*)/'
   artifacts:
     name: coverage
