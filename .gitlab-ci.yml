@@ -5,14 +5,14 @@ variables:
 
 before_script:
   - apt-get update -qq && apt-get install -y -qq xvfb fvwm libnss3 
-  - mkdir -p ~/tmp
+  - su -c 'mkdir -p ~/tmp' node
 
 ci:
   script:
     # gitlab images run as root in container
-    - whoami
-    - npm install --python=python3 --unsafe-perm
-    - xvfb-run bash -c 'fvwm& su -c "npm run ci" node'
+    - su -c whoami node
+    - su -c 'npm install --python=python3 --unsafe-perm' node
+    - su -c 'xvfb-run bash -c "fvwm& npm run ci"' node
   coverage: '/^All files[^\d]*(\d+[.\d]*)/'
   artifacts:
     name: coverage
