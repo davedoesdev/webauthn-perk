@@ -12,7 +12,7 @@ ci:
     # gitlab images run as root in container
     - whoami
     - npm install --python=python3 --unsafe-perm
-    - xvfb-run bash -c 'fvwm& npm run ci'
+    - xvfb-run bash -c 'fvwm& sudo -u node npm run ci'
   coverage: '/^All files[^\d]*(\d+[.\d]*)/'
   artifacts:
     name: coverage
