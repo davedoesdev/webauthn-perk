@@ -35,21 +35,10 @@ module.exports = function (grunt) {
 
         fileWrap: {
             axios: {
-                header: 'export default (function () {',
-                footer: '\nreturn this.axios; }).call({});',
+                header: 'export default (function (globalThis) {',
+                footer: '\nreturn globalThis.axios; })({});',
                 files: {
-                    './dist/axios.js': join(dirname(require.resolve('axios')), 'dist', 'axios.js')
-                },
-                options: {
-                    skipCheck: true
-                }
-            },
-
-            schemas: {
-                header: '/* eslint indent: [ error, 2 ] */ export default ',
-                footer: ';',
-                files: {
-                    './dist/schemas.webauthn4js.js': join(dirname(require.resolve('webauthn4js')), 'schemas', 'schemas.json')
+                    './dist/axios.js': join(dirname(require.resolve('axios')), '..', 'axios.js')
                 },
                 options: {
                     skipCheck: true
@@ -84,6 +73,13 @@ module.exports = function (grunt) {
         const { writeFile } = require('fs/promises');
         const Ajv = require('ajv/dist/2020');
         const standaloneCode = require('ajv/dist/standalone/index.js');
+
+        await writeFile(
+            join(__dirname, 'dist', 'schemas.webauthn4js.js'),
+            '/* eslint indent: [ error, 2 ] */ export default ' +
+            JSON.stringify(require('webauthn4js').schemas, null, 2) +
+            ';');
+
         const { cred } = await import('./dist/schemas.js');
 
         const ajv = new Ajv({

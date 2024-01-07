@@ -5,7 +5,7 @@ const { promisify } = require('util');
 const path = require('path');
 const { readFile } = require('fs').promises;
 const { Agent } = require('https');
-const { expect } = require('chai');
+let expect;
 const crypto = require('crypto');
 const mod_fastify = require('fastify');
 const fastify_static = require('@fastify/static');
@@ -146,16 +146,14 @@ async function make_fastify(port, options) {
 
     await fastify.listen({ port });
 
-    browser.config.after.push(async function () {
-        await fastify.close();
-    });
-
     return fastify;
 }
 
 let fastify;
 
 before(async function () {
+    ({ expect } = await import('chai'));
+
     for (let i = 0; i < 3; ++i) {
         const id = (await randomBytes(64)).toString('hex');
         valid_ids.push(id);
@@ -163,6 +161,12 @@ before(async function () {
     }
 
     fastify = await make_fastify(port);
+
+    browser.options.after.push(async function () {
+        await fastify.close();
+    });
+
+    await browser.addVirtualAuthenticator('ctap2_1', 'usb');
 
     await browser.url(`${origin}/test/test.html`);
 });
@@ -172,26 +176,28 @@ async function executeAsync(f, ...args) {
         (async function () {
             const done = args[args.length - 1];
             function b64url(s) {
-                return btoa(s).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+                return btoa(s)
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=/g, '');
             }
             window.jwt_encode = function (header, payload) {
                 return b64url(JSON.stringify(header)) + '.' +
                        b64url(JSON.stringify(payload)) + '.';
             };
             window.bufferDecode = function (value, modify) {
-                return Uint8Array.from(atob(value), c => c.charCodeAt(0) ^ (modify ? 1 : 0));
+                return Uint8Array.from(atob(value
+                    .replace(/-/g, '+')
+                    .replace(/_/g, '/')), c => c.charCodeAt(0) ^ (modify ? 1 : 0));
             };
             window.bufferEncode = function (value) {
-                return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
-                    .replace(/\+/g, "-")
-                    .replace(/\//g, "_")
-                    .replace(/=/g, "");
+                return b64url(String.fromCharCode.apply(null, new Uint8Array(value)));
             };
             try {
                 // We need to use window.eval to stop esm rewriting eval
                 done(await window.eval(f)(...args.slice(0, -1)));
             } catch (ex) {
-                done({ error: ex.message }); 
+                done({ error: ex.message + ex.stack }); 
             }
         })();
     }, f.toString(), ...args);
@@ -747,6 +753,7 @@ describe('credentials', function () {
         }, `/cred/${valid_ids[2]}/`, '/perk/', audience);
 
         // Present the assertion and get the perk
+        console.log("HELLO", perk_url);
         const perk_response = await axios(perk_url, {
             httpsAgent: new Agent({
                 ca: await readFile(path.join(__dirname, 'keys', 'ca.crt'))

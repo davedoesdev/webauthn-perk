@@ -340,4 +340,4 @@ grunt --gruntfile Gruntfile.cjs coverage
 ----
 
 https://github.com/bcoe/c8[c8] results are available 
-https://gitlab.com/davedoesdev/webauthn-perk/builds/artifacts/master/download?job=ci"[here].
+https://gitlab.com/davedoesdev/webauthn-perk/builds/artifacts/master/download?job=ci[here].

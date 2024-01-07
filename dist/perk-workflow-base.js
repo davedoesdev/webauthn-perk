@@ -14,7 +14,9 @@ const response_validators = {
 
 // Base64 to ArrayBuffer
 function bufferDecode(value) {
-    return Uint8Array.from(atob(value), c => c.charCodeAt(0));
+    return Uint8Array.from(atob(value
+        .replace(/-/g, "+")
+        .replace(/_/g, "/")), c => c.charCodeAt(0));
 }
 
 // ArrayBuffer to URLBase64
@@ -188,7 +190,7 @@ export class PerkWorkflowBase {
             const params = new URLSearchParams();
             params.set('assertion', JSON.stringify(await this.perk_assertion(jwt)));
             perk_url.search = params.toString();
-            return perk_url;
+            return perk_url.toString();
         } finally {
             await this.after_perk();
         }

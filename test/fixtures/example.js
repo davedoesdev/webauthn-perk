@@ -103,7 +103,7 @@ window.addEventListener('load', async function () {
                 const perk_text = document.createTextNode("Copy the following link's address and open it in a new browser: ");
                 perk_div.appendChild(perk_text);
                 const a = document.createElement('a');
-                a.href = perk_url.toString();
+                a.href = perk_url;
                 const a_text = document.createTextNode('link');
                 a.appendChild(a_text);
                 perk_div.appendChild(a);
