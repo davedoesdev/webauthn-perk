@@ -9,9 +9,9 @@ build:
         FROM node:20-bookworm
         ENV DEBIAN_FRONTEND noninteractive
         RUN apt install -y wget
-        RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+        RUN wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | tee /etc/apt/trusted.gpg.d/google.asc \
             && echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
-        RUN apt update -qq && apt install -y -qq xvfb fvwm libnss3 google-chrome-stable
+        RUN apt update -qq && apt install -y -qq xvfb fvwm google-chrome-stable
         USER node
       EOT
     - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
