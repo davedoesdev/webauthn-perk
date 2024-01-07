@@ -1,14 +1,10 @@
-image: node:18-bullseye
+image: node:20-bookworm
 
 variables:
   DEBIAN_FRONTEND: noninteractive
 
 before_script:
-  - apt-get update -qq && apt-get install -y -qq default-jre xvfb fvwm libgtk-3-0 libdbus-glib-1-2
-  - java -version
-  - wget -O - 'https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-GB' | tar -xjC /opt
-  - ln -s /opt/firefox/firefox /usr/local/bin
-  - firefox --version
+  - apt-get update -qq && apt-get install -y -qq xvfb fvwm libgtk-3-0 libdbus-glib-1-2
   - mkdir -p ~/tmp
 
 ci:
@@ -16,7 +12,7 @@ ci:
     # gitlab images run as root in container
     - whoami
     - npm install --python=python3 --unsafe-perm
-    - xvfb-run bash -c 'fvwm& DEBUG=selenium-standalone:* npm run ci'
+    - xvfb-run bash -c 'fvwm& npm run ci'
   coverage: '/^All files[^\d]*(\d+[.\d]*)/'
   artifacts:
     name: coverage
