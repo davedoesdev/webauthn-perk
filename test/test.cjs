@@ -151,7 +151,8 @@ async function make_fastify(port, options) {
 
 async function load(url) {
     await browser.url(url);
-    await browser.waitUntil(() => browser.execute(() => document.readyState === 'complete'));
+    await browser.waitUntil(() => browser.execute(() =>
+        typeof axios !== 'undefined'));
 }
 
 let fastify;
