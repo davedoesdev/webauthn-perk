@@ -151,8 +151,9 @@ async function make_fastify(port, options) {
 
 async function load(url) {
     await browser.url(url);
-    await browser.waitUntil(() => browser.execute(() => typeof axios !== 'undefined'),
-                            { timeout: 60000 });
+    await browser.waitUntil(
+        () => browser.execute(() => typeof axios !== 'undefined'),
+        { timeout: 60000 });
 }
 
 let fastify;
