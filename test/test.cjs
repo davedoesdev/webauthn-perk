@@ -149,6 +149,11 @@ async function make_fastify(port, options) {
     return fastify;
 }
 
+async function load(url) {
+    await browser.url(url);
+    await browser.waitUntil(() => browser.execute(() => document.readyState === 'complete'));
+}
+
 let fastify;
 
 before(async function () {
@@ -168,7 +173,7 @@ before(async function () {
 
     await browser.addVirtualAuthenticator('ctap2_1', 'usb');
 
-    await browser.url(`${origin}/test/test.html`);
+    await load(`${origin}/test/test.html`);
 });
 
 async function executeAsync(f, ...args) {
@@ -862,7 +867,7 @@ describe('credentials', function () {
         const origin2 = `https://localhost:${port2}`;
         const cred_url2 = `${origin2}/cred/${id2}/`;
 
-        await browser.url(`${origin2}/test/test.html`);
+        await load(`${origin2}/test/test.html`);
         await auth(cred_url2);
         const [data, status] = await perk(cred_url2, origin2, { valid_status: 500 });
         expect(data.message).to.equal('missing handler');
@@ -885,7 +890,7 @@ describe('credentials', function () {
         const origin3 = `https://localhost:${port3}`;
         const cred_url3 = `${origin3}/cred/${id3}/`;
 
-        await browser.url(`${origin3}/test/test.html`);
+        await load(`${origin3}/test/test.html`);
         await auth(cred_url3);
         await perk(cred_url3, origin3);
 
@@ -907,7 +912,7 @@ describe('credentials', function () {
         const origin5 = `https://localhost:${port5}`;
         const cred_url5 = `${origin5}/cred/${id5}/`;
 
-        await browser.url(`${origin5}/test/test.html`);
+        await load(`${origin5}/test/test.html`);
         await auth(cred_url5);
 
         expect(ks).to.exist;
@@ -926,7 +931,7 @@ describe('credentials', function () {
         const origin6 = `https://localhost:${port6}`;
         const cred_url6 = `${origin6}/cred/${id6}/`;
 
-        await browser.url(`${origin6}/test/test.html`);
+        await load(`${origin6}/test/test.html`);
 
         await auth(cred_url6, {
             wrong_type: true
@@ -950,7 +955,7 @@ describe('credentials', function () {
         const origin7 = `https://localhost:${port7}`;
         const cred_url7 = `${origin7}/prefix7/cred/${id7}/`;
 
-        await browser.url(`${origin7}/test/test.html`);
+        await load(`${origin7}/test/test.html`);
         await auth(cred_url7);
 
         expect(ks).to.exist;
@@ -978,7 +983,7 @@ describe('credentials', function () {
         const origin8 = `https://localhost:${port8}`;
         const cred_url8 = `${origin8}/prefix8/cred/${id8}/`;
 
-        await browser.url(`${origin8}/test/test.html`);
+        await load(`${origin8}/test/test.html`);
         await auth(cred_url8);
 
         expect(ks).to.exist;
@@ -1015,7 +1020,7 @@ describe('credentials', function () {
             const origin9 = `https://localhost:${port9}`;
             const cred_url9 = `${origin9}/cred/${id9}/`;
 
-            await browser.url(`${origin9}/test/test.html`);
+            await load(`${origin9}/test/test.html`);
             await auth(cred_url9);
 
             const [ data, status ] = await perk(cred_url9, origin9, {
