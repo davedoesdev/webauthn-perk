@@ -21,6 +21,8 @@ const urls = [];
 let hash_id;
 let keystore;
 let webAuthn;
+let fastify;
+let extra_fastifies;
 
 const webauthn_perk_path = '../plugin.js';
 
@@ -52,7 +54,7 @@ async function make_fastify(port, options) {
         }
     }, options);
 
-    const fastify = mod_fastify({
+    const f = mod_fastify({
         logger: true,
         https: {
             key: await readFile(path.join(__dirname, 'keys', 'server.key')),
@@ -128,25 +130,29 @@ async function make_fastify(port, options) {
         delete plugin_options.authorize_jwt_options.complete_webauthn_token;
     }
 
-    fastify.register(webauthn_perk, {
+    f.register(webauthn_perk, {
         webauthn_perk_options: plugin_options,
         ... options.prefix === undefined ? {} : { prefix: options.prefix }
     });
 
-    fastify.register(fastify_static, {
+    f.register(fastify_static, {
         root: path.join(__dirname, 'fixtures'),
         prefix: '/test'
     });
 
-    fastify.register(fastify_static, {
+    f.register(fastify_static, {
         root: path.join(__dirname, '..', 'dist'),
         prefix: '/test/dist',
         decorateReply: false
     });
 
-    await fastify.listen({ port });
+    await f.listen({ port });
 
-    return fastify;
+    if (fastify) {
+        extra_fastifies.push(f);
+    } else {
+        fastify = f;
+    }
 }
 
 async function load(url) {
@@ -155,8 +161,6 @@ async function load(url) {
         () => browser.execute(() => typeof axios !== 'undefined'),
         { timeout: 60000 });
 }
-
-let fastify;
 
 before(async function () {
     ({ expect } = await import('chai'));
@@ -167,15 +171,26 @@ before(async function () {
         urls.push(`${origin}/cred/${id}/`);
     }
 
-    fastify = await make_fastify(port);
+    await browser.addVirtualAuthenticator('ctap2_1', 'usb');
+
+    await make_fastify(port);
 
     browser.options.after.push(async function () {
         await fastify.close();
     });
 
-    await browser.addVirtualAuthenticator('ctap2_1', 'usb');
-
     await load(`${origin}/test/test.html`);
+});
+
+beforeEach(async function () {
+    extra_fastifies = [];
+
+});
+
+afterEach(async function () {
+    for (const f of extra_fastifies) {
+        await f.close();
+    }
 });
 
 async function executeAsync(f, ...args) {
@@ -760,7 +775,6 @@ describe('credentials', function () {
         }, `/cred/${valid_ids[2]}/`, '/perk/', audience);
 
         // Present the assertion and get the perk
-        console.log("HELLO", perk_url);
         const perk_response = await axios(perk_url, {
             httpsAgent: new Agent({
                 ca: await readFile(path.join(__dirname, 'keys', 'ca.crt'))
