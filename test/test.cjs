@@ -178,13 +178,11 @@ before(async function () {
     browser.options.after.push(async function () {
         await fastify.close();
     });
-
-    await load(`${origin}/test/test.html`);
 });
 
 beforeEach(async function () {
     extra_fastifies = [];
-
+    await load(`${origin}/test/test.html`);
 });
 
 afterEach(async function () {
