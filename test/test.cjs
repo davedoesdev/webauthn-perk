@@ -186,6 +186,7 @@ beforeEach(async function () {
 });
 
 afterEach(async function () {
+    await browser.url('about:blank');
     for (const f of extra_fastifies) {
         await f.close();
     }
