@@ -29,3 +29,8 @@ jobs:
         uses: coactions/setup-xvfb@v1
         with:
           run: npm run ci
+
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
