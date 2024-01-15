@@ -2,7 +2,7 @@
   "name": "webauthn-perk",
   "description": "Claims-based Web Authentication",
   "version": "7.0.2",
-  "homepage": "https://gitlab.com/davedoesdev/webauthn-perk",
+  "homepage": "https://github.com/davedoesdev/webauthn-perk",
   "author": {
     "name": "David Halls",
     "email": "dave@davedoesdev.com",
@@ -10,10 +10,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://gitlab.com/davedoesdev/webauthn-perk.git"
+    "url": "https://github.com/davedoesdev/webauthn-perk.git"
   },
   "bugs": {
-    "url": "https://gitlab.com/davedoesdev/webauthn-perk/issues"
+    "url": "https://github.com/davedoesdev/webauthn-perk/issues"
   },
   "type": "module",
   "main": "plugin.js",
