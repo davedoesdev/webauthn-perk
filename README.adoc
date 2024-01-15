@@ -1,4 +1,4 @@
-= webauthn-perk {nbsp}{nbsp}{nbsp} image:https://gitlab.com/davedoesdev/webauthn-perk/badges/master/pipeline.svg[pipeline status,link=https://gitlab.com/davedoesdev/webauthn-perk/pipelines] image:https://gitlab.com/davedoesdev/webauthn-perk/badges/master/coverage.svg[coverage report,link="https://gitlab.com/davedoesdev/webauthn-perk/builds/artifacts/master/download?job=ci"] image:https://img.shields.io/npm/v/webauthn-perk.svg[NPM version,link=https://www.npmjs.com/package/webauthn-perk]
+= webauthn-perk {nbsp}{nbsp}{nbsp} image:https://github.com/davedoesdev/webauthn-perk/workflows/ci/badge.svg[CI status,link=https://github.com/davedoesdev/webauthn-perk/actions] image:https://coveralls.io/repos/github/davedoesdev/webauthn-perk/badge.svg[Coverage Status,link="https://coveralls.io/github/davedoesdev/webauthn-perk"] image:https://img.shields.io/npm/v/webauthn-perk.svg[NPM version,link=https://www.npmjs.com/package/webauthn-perk]
 :prewrap!:
 
 https://www.fastify.io/[Fastify] plugin for supporting the https://www.w3.org/TR/webauthn/[Web Authentication]
@@ -340,4 +340,6 @@ grunt --gruntfile Gruntfile.cjs coverage
 ----
 
 https://github.com/bcoe/c8[c8] results are available 
-https://gitlab.com/davedoesdev/webauthn-perk/builds/artifacts/master/download?job=ci[here].
+http://rawgit.davedoesdev.com/davedoesdev/webauthn-perk/master/coverage/lcov-report/index.html[here].
+
+Coveralls page is https://coveralls.io/r/davedoesdev/webauthn4js[here].

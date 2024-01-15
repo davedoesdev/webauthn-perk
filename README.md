@@ -442,4 +442,7 @@ grunt --gruntfile Gruntfile.cjs coverage
 ```
 
 [c8](https://github.com/bcoe/c8) results are available
-[here](https://gitlab.com/davedoesdev/webauthn-perk/builds/artifacts/master/download?job=ci).
+[here](http://rawgit.davedoesdev.com/davedoesdev/webauthn-perk/master/coverage/lcov-report/index.html).
+
+Coveralls page is
+[here](https://coveralls.io/r/davedoesdev/webauthn4js).
