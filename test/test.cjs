@@ -527,7 +527,7 @@ describe('credentials', function () {
     it('should detect cloned credential', async function () {
         const orig_finishLogin = webAuthn.finishLogin;
         webAuthn.finishLogin = async function(user, session_data, car) {
-            user.credentials[0].Authenticator.SignCount = 100;
+            user.credentials[0].authenticator.signCount = 100;
             return orig_finishLogin.call(this, user, session_data, car);
         };
         try {

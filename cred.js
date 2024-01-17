@@ -157,10 +157,10 @@ export default async function (fastify, options) {
                 ex.statusCode = 400;
                 throw ex;
             }
-            if (credential.Authenticator.CloneWarning) {
+            if (credential.authenticator.cloneWarning) {
                 throw new ErrorWithStatus('credential appears to be cloned', 403);
             }
-            // Note we don't update SignCount because the credential is expected to be used
+            // Note we don't update signCount because the credential is expected to be used
             // to sign assertions which are given out as perks, which (a) may be duplicated
             // and (b) may be used in any order.
             reply.code(204);
